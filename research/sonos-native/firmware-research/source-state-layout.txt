@@ -1,0 +1,88 @@
+CurrentSourceState layout and activation follow-up — 14 October 2026
+
+Scope
+Static reference: Play:3 86.10-81100. Installed test build: 86.10-80260.
+No firmware modifications, source-state requests, pairing, or audible tests.
+The offline source_state.py decoder uses synthetic fixtures derived from the
+serializer/parser layout. No real decrypted CurrentSourceState sample has been
+validated. Field semantics below remain unknown unless explicitly described.
+
+Prefix layout
+Serializer 0x102f0968 uses format string 0x10c132d4; parser 0x102f0bac checks
+length 164 and 15 scanf conversions. The first 100 characters encode these
+fields. Positions are zero-based and end-exclusive; offsets refer to the
+source-state object, not wire byte offsets or Sonos protocol field names.
+
+Characters   Object offset   Hex width
+0..4         0x00ea          4
+4..12        0x00f0          8
+12..20       0x0138          8
+20..28       0x013c          8
+28..32       0x0140          4
+32..34       0x0154          2
+34..42       0x0144          8
+42..50       0x0148          8
+50..58       0x0124          8
+58..66       0x0128          8
+66..74       0x014c          8
+74..82       0x0150          8
+82..90       0x012c          8
+90..98       0x0130          8
+98..100      0x0120          2
+
+The final field is clamped to zero above 0x11, by the serializer at
+0x102f0a34..0x102f0a40 and parser at 0x102f0cd8..0x102f0cec.
+The decoder reports both its raw value and effective clamped value.
+Other field names deliberately remain offsets: values must not be guessed as
+ports, sequence numbers, positions, or playback states without further evidence.
+
+64-character descriptor
+Serializer 0x1070a68c and parser 0x1070a818 (wrapper 0x1070aa1c) establish:
+- Prefix: two hex digits and a colon; flags range 0..3.
+- Flag bit 0: append u32, u32, u64, each hexadecimal and colon-terminated.
+  Format at 0x10c761ac is %08X:%08X:%016llX: (35 characters).
+- Flag bit 1: append eight hex bytes, colon, u16, colon, u16 (26 characters).
+  Format at 0x10c761c0 is %02X%02X%02X%02X%02X%02X%02X%02X:%04X:%04X.
+- Both flags produce exactly 64 characters including the three-character prefix.
+  Shorter forms are space-padded by the outer serializer at 0x102f0ad4..0x102f0af4.
+The parser checks flag range and block conversion counts. This is a structured
+descriptor, not a plain sender-IP/port string. Its fields' audio semantics have
+not been established. The offline decoder intentionally accepts only canonical
+fixed-width forms; it does not reproduce every permissive scanf input.
+
+Activation consequences
+BecomeGroupCoordinatorAndSource calls the source-state parser at 0x102bcc78.
+An important distinction: parser failure does NOT immediately reject the action.
+The branch at 0x102bd184 records that source state will not be restored, sets
+r19=0, and returns to the remaining handoff logic at 0x102bcc84. The diagnostic
+string is at 0x10c0db2c. Therefore an HTTP 200 from this action would not establish
+that a fabricated or incomplete source state was accepted or restored.
+
+The handler writes transport-mode field object+0x4244 = 2 at
+0x102bce64..0x102bce68, whereas plain BecomeGroupCoordinator writes 1.
+Neither is the member value 0 required by ordinary ChangeTransportSettings.
+Its source-state field +0x138 controls additional branches: value 5 reaches
+checks of descriptor field +0x120 for 7 or 16 at 0x102bcff8..0x102bd010.
+The associated log refers to stopping a sink for adaptive-bitrate delegation.
+These enum meanings are not fully resolved; do not substitute guessed values.
+The alternate method thus transfers an existing source context. Replacing its
+state with zeros or an endpoint string is not an established activation route.
+
+Next evidence needed
+A legitimate readable state sample, or further tracing of the code that populates
+the fields, is needed before constructing an activation request. Existing captures
+contain encrypted handoff traffic and do not supply that sample. No new capture
+or reset is requested solely to obtain one. The independently prepared listening
+test remains useful for determining whether the already retained UDP sink renders.
+
+Muted listening-sequence rehearsal
+The controller's 25-second detached test completed with 4,392 packets, 50 clock
+requests and zero late sends. The new diagnostics measured 1,434 packets / 16
+clock requests in the pre-promotion reference interval, and 2,856 packets / 33
+clock requests over 16.2584 seconds after confirmed helper release. Intermediate
+packets during control calls are intentionally excluded from these two interval
+totals. Receiver state remained PAUSED_PLAYBACK/OK; the transport success check
+correctly failed despite sender completion. Both speakers' source/metadata,
+transport, volume, mute and standalone grouping were restored without errors.
+No audible test occurred. See muted-listening-rehearsal.json. Thirty-one offline
+checks passed across decoder, PCM, receiver/control probes and controller.

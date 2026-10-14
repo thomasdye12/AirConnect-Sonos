@@ -169,4 +169,19 @@ class GroupProbeTests(unittest.TestCase):
         self.assertFalse(phase['sender_check_passed'])
         self.assertFalse(phase['transport_check_passed'])
 
+    def test_detached_deltas_exclude_reference_and_transition_packets(self):
+        phase = dict(checkpoints={
+            'stream_started': dict(elapsed=0, stats=dict(packets=1, clock_requests=0, late_packets=0)),
+            'helper_released': dict(elapsed=8.5, stats=dict(packets=1493, clock_requests=17, late_packets=2)),
+            'stream_finished': dict(elapsed=25, stats=dict(packets=4392, clock_requests=50, late_packets=3))})
+        result = probe.interval_progress(phase, 'helper_released', 'stream_finished')
+        self.assertEqual(result, dict(seconds=16.5, packets=2899, clock_requests=33,
+                                      late_packets=1, acoustic_playback_verified=False))
+        self.assertIsNone(probe.interval_progress(phase, 'missing', 'stream_finished'))
+        with self.assertRaises(ValueError):
+            probe.interval_progress(phase, 'stream_finished', 'helper_released')
+        phase['checkpoints']['stream_finished']['stats']['packets'] = 1
+        with self.assertRaises(ValueError):
+            probe.interval_progress(phase, 'helper_released', 'stream_finished')
+
 if __name__ == '__main__': unittest.main()

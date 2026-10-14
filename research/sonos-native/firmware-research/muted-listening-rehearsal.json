@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-14",
+  "test": "Muted rehearsal of the reference/detached listening sequence",
+  "private_evidence_sha256": "916d0404ce3a9ba0a2311f8b7cb21a4c10ea0230ae9da1331630861b2e970285",
+  "signal": "tone",
+  "muted": true,
+  "audible_test_performed": false,
+  "production_bridge_modified": false,
+  "offline_checks_passed": 31,
+  "all_restored": true,
+  "restore_errors": [],
+  "duration_seconds": 25,
+  "checkpoints": {
+    "stream_started": {
+      "elapsed": 0.0,
+      "stats": {
+        "packets": 1,
+        "clock_requests": 0,
+        "late_packets": 0
+      }
+    },
+    "before_promotion": {
+      "elapsed": 8.1647,
+      "stats": {
+        "packets": 1435,
+        "clock_requests": 16,
+        "late_packets": 0
+      }
+    },
+    "promoted": {
+      "elapsed": 8.4722,
+      "stats": {
+        "packets": 1489,
+        "clock_requests": 17,
+        "late_packets": 0
+      }
+    },
+    "helper_released": {
+      "elapsed": 8.7368,
+      "stats": {
+        "packets": 1536,
+        "clock_requests": 17,
+        "late_packets": 0
+      }
+    },
+    "stream_finished": {
+      "elapsed": 24.9952,
+      "stats": {
+        "packets": 4392,
+        "clock_requests": 50,
+        "late_packets": 0
+      }
+    }
+  },
+  "stats": {
+    "packets": 4392,
+    "clock_requests": 50,
+    "late_packets": 0
+  },
+  "state": {
+    "CurrentTransportState": "PAUSED_PLAYBACK",
+    "CurrentTransportStatus": "OK",
+    "CurrentSpeed": "1"
+  },
+  "reference_progress": {
+    "seconds": 8.1647,
+    "packets": 1434,
+    "clock_requests": 16,
+    "late_packets": 0,
+    "acoustic_playback_verified": false
+  },
+  "detached_progress": {
+    "seconds": 16.2584,
+    "packets": 2856,
+    "clock_requests": 33,
+    "late_packets": 0,
+    "acoustic_playback_verified": false
+  },
+  "sender_check_passed": true,
+  "transport_check_passed": false,
+  "helper_standalone": true,
+  "receiver_standalone": true
+}

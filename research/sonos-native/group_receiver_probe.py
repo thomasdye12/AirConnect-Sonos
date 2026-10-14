@@ -98,6 +98,27 @@ def phase_checks(phase, receiver_id, promote=False, promotion_mode='retain'):
         phase['transport_check_passed'] = phase['promotion_check_passed']
 
 
+def record_checkpoint(phase, name, sender, started):
+    phase.setdefault('checkpoints', {})[name] = dict(
+        elapsed=round(time.monotonic() - started, 4), stats=sender.stats())
+
+
+def interval_progress(phase, start, end):
+    """Sender-side deltas; these never imply that samples were rendered."""
+    points = phase.get('checkpoints', {})
+    if start not in points or end not in points:
+        return None
+    a, b = points[start], points[end]
+    if b['elapsed'] < a['elapsed']:
+        raise ValueError('Checkpoints out of order')
+    delta = {key: b['stats'][key] - a['stats'][key]
+             for key in ('packets', 'clock_requests', 'late_packets')}
+    if any(value < 0 for value in delta.values()):
+        raise ValueError('Sender counters reset inside an interval')
+    return dict(seconds=round(b['elapsed'] - a['elapsed'], 4),
+                **delta, acoustic_playback_verified=False)
+
+
 def run(args):
     validate_options(args)
     audible = getattr(args, 'audible', False)
@@ -208,6 +229,7 @@ def run(args):
                         phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
                 save()
                 phase_start = time.monotonic()
+                record_checkpoint(phase, 'stream_started', sender, phase_start)
                 phase['progress'] = []
                 while worker.is_alive() and time.monotonic() - phase_start < duration + 5:
                     worker.join(1)
@@ -218,6 +240,7 @@ def run(args):
                         phase['promotion_attempted'] = True
                         phase['promotion_elapsed'] = round(time.monotonic() - phase_start, 3)
                         phase['before_promotion'] = snapshot(args.receiver)
+                        record_checkpoint(phase, 'before_promotion', sender, phase_start)
                         promotion_mode = getattr(args, 'promotion_mode', 'retain')
                         promotion_group = (group.get('ID') if promotion_mode == 'retain' else
                                            group_for(before[args.receiver]['topology'], args.receiver_id).get('ID'))
@@ -228,11 +251,13 @@ def run(args):
                                headers={'x-sonos-clone-gc': '1'})
                         phase['promotion_accepted'] = True
                         phase['after_promotion'] = snapshot(args.receiver)
+                        record_checkpoint(phase, 'promoted', sender, phase_start)
                         if promotion_mode != 'retain':
                             action(args.coordinator, 'RemoveMember', {'MemberID': args.receiver_id}, '/GroupManagement/Control', 'GroupManagement')
                             phase['remove_member_accepted'] = True
                             phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
                             phase['after_helper_detach'] = snapshot(args.receiver)
+                            record_checkpoint(phase, 'helper_released', sender, phase_start)
                         if promotion_mode == 'resume':
                             av(args.receiver, 'Play', Speed=1)
                             phase['resume_accepted'] = True
@@ -242,6 +267,9 @@ def run(args):
                     save()
                 if worker.is_alive(): raise RuntimeError('Sender exceeded bounded duration')
                 if errors: raise RuntimeError(errors[0])
+                record_checkpoint(phase, 'stream_finished', sender, phase_start)
+                phase['reference_progress'] = interval_progress(phase, 'stream_started', 'before_promotion')
+                phase['detached_progress'] = interval_progress(phase, 'helper_released', 'stream_finished')
                 phase['media'] = av(args.receiver, 'GetMediaInfo')
                 phase['coordinator_state'] = snapshot(args.coordinator)
                 phase['state'] = av(args.receiver, 'GetTransportInfo')
@@ -296,7 +324,7 @@ def run(args):
                 except Exception as exc: result['restore_errors'].append({'step': ip + ' verification', 'error': str(exc)})
         save()
     summary = {k: result[k] for k in ('error', 'verified', 'restore_errors') if k in result}
-    summary['phases'] = [{k: p[k] for k in ('name', 'setup_accepted', 'stats', 'state', 'error', 'sender_check_passed', 'transport_check_passed', 'helper_standalone', 'receiver_standalone', 'receiver_group_coordinator') if k in p} for p in result['phases']]
+    summary['phases'] = [{k: p[k] for k in ('name', 'setup_accepted', 'stats', 'state', 'error', 'sender_check_passed', 'transport_check_passed', 'helper_standalone', 'receiver_standalone', 'receiver_group_coordinator', 'reference_progress', 'detached_progress') if k in p} for p in result['phases']]
     print(json.dumps(summary, indent=2))
     return result
 

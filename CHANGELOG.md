@@ -2,6 +2,8 @@
 
 ## Research follow-up — 2026-10-14
 
+Added separate pre/post-detachment sender diagnostics and an offline decoder for the traced source-state layout. The alternate handoff handler can continue after source-state parsing fails; successful control replies alone must not be interpreted as source activation. Decoder fields remain opaque where semantics are unverified. No production backend change.
+
 Added controller `udp-test`, muted nonzero PCM, and an explicitly enabled, bounded tone listening mode. A detached receiver sustained a 120-second nonzero-PCM test but continued to report paused. Traced the reference firmware's explicit paused-state selection for source-less promotion. Source/state/volume/mute/group restoration remains mandatory; production playback is unchanged. See `detached-pcm-followup.txt`.
 
 Two silent native UDP receivers now passed a shared-coordinator control for 90 and 150 seconds, including stopping the first while the second continued. Added a centralized three-speaker probe and four failure-path tests. Self-promotion with corrected group/membership cleanup kept UDP/timing alive for 120 seconds after releasing the helper, but Sonos reported paused and audible rendering remains unverified. Initial helper-assisted setup remains necessary. Added three checks separating sender progress from playback success. See `coordinator-role-followup.txt` for evidence and limits. Production playback is unchanged.
