@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-14",
+  "production_bridge_modified": false,
+  "audible_test_performed": false,
+  "independent_setup_solved": false,
+  "offline_checks_passed": 25,
+  "cases": [
+    {
+      "name": "detached receiver nonzero PCM",
+      "private_evidence_sha256": "15df2021af28cc21d34b72af39f388645bfe22603d0c83447a34d6cff660e135",
+      "muted": true,
+      "signal": "tone",
+      "duration_seconds": 120,
+      "stats": {
+        "packets": 21083,
+        "clock_requests": 135,
+        "late_packets": 3
+      },
+      "state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": false,
+      "helper_standalone_before_restore": true,
+      "receiver_standalone_before_restore": true,
+      "all_restored": true,
+      "restore_errors": []
+    },
+    {
+      "name": "controller ordinary-group nonzero PCM",
+      "private_evidence_sha256": "a9a9ceac970ccb9a745c0db7a1653b552cc6e943313aa0e06346083171e98f71",
+      "muted": true,
+      "signal": "tone",
+      "duration_seconds": 20,
+      "stats": {
+        "packets": 3513,
+        "clock_requests": 40,
+        "late_packets": 0
+      },
+      "state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": true,
+      "helper_standalone_before_restore": false,
+      "receiver_standalone_before_restore": false,
+      "all_restored": true,
+      "restore_errors": []
+    }
+  ]
+}

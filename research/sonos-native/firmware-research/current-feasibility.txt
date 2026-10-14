@@ -1,4 +1,10 @@
-LATEST FOLLOW-UP: a self-promoted receiver kept UDP/timing alive for 120 seconds
+LATEST PCM CHECK: the detached endpoint also sustained 120 seconds of muted
+nonzero PCM but remained PAUSED_PLAYBACK. The controller now exposes a bounded
+udp-test command, with a separately enabled listening mode. Its ordinary-group
+control passed 20 seconds of nonzero PCM in PLAYING state. No audible validation
+or independent bootstrap was achieved. See detached-pcm-followup.txt and .json.
+
+PREVIOUS FOLLOW-UP: a self-promoted receiver kept UDP/timing alive for 120 seconds
 with the helper released, avoiding the previous orphan shutdown in that test.
 It reported PAUSED_PLAYBACK, and audible rendering is unverified. Initial setup
 still uses another real stopped speaker. Explicit Play ended the native stream;

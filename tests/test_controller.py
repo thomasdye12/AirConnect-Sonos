@@ -36,4 +36,27 @@ class ControllerTests(unittest.TestCase):
             self.assertNotIn('--audible', command)
             self.assertNotIn('--wav', command)
 
+    def udp_args(self):
+        return ['udp-test', '--receiver', '192.0.2.1', '--receiver-id', 'RINCON_A',
+                '--coordinator', '192.0.2.2', '--coordinator-id', 'RINCON_B', '--output', 'private.json']
+
+    def test_udp_controller_defaults_muted_and_propagates_probe_failure(self):
+        with patch.object(c.os.path, 'isfile', return_value=True), patch.object(c.subprocess, 'call', return_value=1) as call:
+            self.assertEqual(c.main(self.udp_args() + ['--mode', 'detach', '--signal', 'tone']), 1)
+            command = call.call_args[0][0]
+            self.assertNotIn('--audible', command)
+            self.assertIn('--promote-receiver', command)
+            self.assertEqual(command[command.index('--promotion-mode') + 1], 'detach')
+
+    def test_udp_audible_requires_bounded_tone(self):
+        with patch.object(c.subprocess, 'call') as call:
+            for options in (['--audible'], ['--audible', '--signal', 'tone', '--seconds', '120']):
+                with self.assertRaises(ValueError): c.main(self.udp_args() + options)
+            call.assert_not_called()
+
+    def test_udp_missing_library_refused_before_probe(self):
+        with patch.object(c.os.path, 'isfile', return_value=False), patch.object(c.subprocess, 'call') as call:
+            with self.assertRaises(RuntimeError): c.main(self.udp_args())
+            call.assert_not_called()
+
 if __name__ == '__main__': unittest.main()

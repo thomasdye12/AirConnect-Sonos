@@ -1,0 +1,68 @@
+Detached receiver with nonzero PCM — 14 October 2026
+
+Implementation
+The group receiver probe now accepts --signal tone while staying muted by default.
+It generates 44.1 kHz stereo signed 16-bit little-endian PCM, a 440 Hz sine with
+peak amplitude 6000 and 200 ms fades. Packet sample position continues across
+promotion. Zero PCM compresses to a 28-byte Sonos datagram; this signal exercises
+near-full audio datagrams using the same native encoder. Payload sizes are a
+codec property, not a new on-wire capture or proof of decoding at the speaker.
+
+The controller exposes udp-test --mode ordinary|detach. This requires a full
+checkout and locally built native library, and two stopped standalone speakers.
+The new command leaves the production AirPlay backend unchanged. --audible is
+explicit, requires a tone and at most 30 seconds, and caps test volume at 25.
+The helper remains muted. Default controller promotion delay is eight seconds,
+providing a reference interval before the detached interval in a listening test.
+The known failed Play-after-promotion experiment remains restricted to mute.
+Restoration first mutes both speakers, then attempts all original source, state,
+volume and mute restorations independently and verifies standalone grouping.
+
+Live detached result
+Server Room with Utility Room used the previously documented detach sequence.
+Both speakers stayed muted. The sender completed 120 seconds / 21,083 packets,
+received 135 timing requests, and recorded three sends over six milliseconds late.
+Both devices were standalone after helper release. The receiver reported
+PAUSED_PLAYBACK/OK. The sender check passed; the playback check correctly failed,
+and the command returned exit status 1. No runtime error or restoration error.
+Original source/metadata, transport, mute, volume and grouping were verified.
+This establishes endpoint persistence with nonzero PCM, not audible playback,
+latency, decoded audio, or helper-free initial setup.
+
+Controller control test and validation
+The controller's ordinary-group mode also completed a muted 20-second tone-payload
+test: 3,513 packets, 40 timing requests, zero late sends, PLAYING/OK. Both sender
+and transport checks passed; the controller returned exit status 0. This control
+retained the helper and does not prove detached playback. Both speakers' original
+source/metadata, transport, volume, mute and standalone grouping were verified
+restored, with no restoration errors. Twenty-five offline checks passed across
+the group/multi-receiver probes, PCM generator and controller, including bounded
+audible options, muted nonzero sending, and restoration after sender failure.
+
+Why the paused status is plausible — static evidence
+Reference: Play:3 86.10-81100; installed test build: 86.10-80260.
+This is a static explanation consistent with observations, not a live trace.
+In BecomeGroupCoordinator, the source-less branch at 0x102bc348..0x102bc35c
+sets r30=0. Later, 0x102bc240..0x102bc250 branches to 0x102bc360. That code
+turns the zero source byte into r4=1, then calls 0x10427e10 for object+0x7348.
+The setter stores the enum at +4 and marks it changed. Its serializer at
+0x10427e38 maps value 1 to PAUSED_PLAYBACK (string 0x10bf4fa0); value 0 maps
+to PLAYING (0x10bf4454). The same promotion path writes 1 to object+0x4244
+at 0x102bc26c..0x102bc270. ChangeTransportSettings rejects a nonzero field
+at 0x1028a1e0..0x1028a1ec. Thus simply repeating ChangeTransportSettings
+after promotion has a concrete state-gate objection in the reference build.
+These observations do not establish whether the retained sink renders PCM.
+
+ChangeCoordinator is not an alternative self-promotion route: 0x10349dc8 compares
+the replacement identity with the local identity at 0x10349e0c..0x10349e24,
+and rejects equality. This was already noted in ordinary-group-udp-tests.txt;
+no redundant live self-handoff was run.
+
+Next gate
+Listen to an ordinary reference followed by detached playback using the same
+sender. This separates endpoint persistence from actual sound. If the detached
+interval renders, investigate portable helper cleanup and longer recovery tests;
+if silent, reconstruct a legitimate source-state activation path before treating
+this as an AirPlay backend. Initial helper-free setup remains an open problem.
+No listener was available for this run, so no audible test was performed.
+Sanitized control-test results and validation counts accompany this note in JSON.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local bridge management. Python 3.4+; experimental clip tests need Python 3.8+."""
+"""Local bridge management. Python 3.4+; experimental transport tests need Python 3.8+."""
 import argparse
 import json
 import os
@@ -66,10 +66,42 @@ def main(argv=None):
     clip.add_argument('--output', required=True, help='Private JSON result file')
     clip.add_argument('--seconds', type=int, choices=range(1, 61), default=12, metavar='1..60')
     clip.add_argument('--streaming', action='store_true')
+    udp = sub.add_parser('udp-test', help='Experimental bounded UDP test with a stopped helper; muted by default')
+    for name in ('receiver', 'receiver-id', 'coordinator', 'coordinator-id', 'output'):
+        udp.add_argument('--' + name, required=True)
+    udp.add_argument('--mode', choices=('ordinary', 'detach'), default='ordinary')
+    udp.add_argument('--seconds', type=int, choices=range(1, 121), default=20, metavar='1..120')
+    udp.add_argument('--signal', choices=('silence', 'tone'), default='silence')
+    udp.add_argument('--audible', action='store_true', help='Explicitly unmute a tone test, at most 30 seconds')
+    udp.add_argument('--test-volume', type=int, choices=range(26), default=15, metavar='0..25')
+    udp.add_argument('--promotion-delay', type=int, choices=range(3, 31), default=8, metavar='3..30')
     args = parser.parse_args(argv)
     if not args.command:
         parser.print_help()
         return 2
+    if args.command == 'udp-test':
+        if sys.version_info < (3, 8):
+            raise RuntimeError('UDP tests need Python 3.8+ on your test host')
+        if args.audible and (args.signal != 'tone' or args.seconds > 30):
+            raise ValueError('Audible tests require --signal tone and at most 30 seconds')
+        if args.mode == 'detach' and args.seconds < args.promotion_delay + 2:
+            raise ValueError('Detached test needs at least two seconds after promotion')
+        directory = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                                 'research', 'sonos-native')
+        probe = os.path.join(directory, 'group_receiver_probe.py')
+        library = os.path.join(directory, 'native', 'build',
+                               'libsonos_native.dylib' if sys.platform == 'darwin' else 'libsonos_native.so')
+        if not os.path.isfile(probe) or not os.path.isfile(library):
+            raise RuntimeError('Use the full Git checkout and first run: make -C research/sonos-native/native')
+        command = [sys.executable, probe]
+        for name in ('receiver', 'receiver_id', 'coordinator', 'coordinator_id', 'output',
+                     'seconds', 'signal', 'test_volume', 'promotion_delay'):
+            command.extend(['--' + name.replace('_', '-'), str(getattr(args, name))])
+        if args.mode == 'detach':
+            command.extend(['--promote-receiver', '--promotion-mode', 'detach'])
+        if args.audible:
+            command.append('--audible')
+        return subprocess.call(command)
     if args.command == 'clip-test':
         if sys.version_info < (3, 8):
             raise RuntimeError('Clip tests need Python 3.8+; run this command on a Mac or modern Linux host')

@@ -71,3 +71,18 @@ python3 multi_receiver_probe.py --first SPEAKER_A_IP --first-id SPEAKER_A_UUID -
 ```
 
 All three must be stopped and standalone. The command uses silence and mute, detaches/stops the first receiver, checks the second keeps playing, and restores/verifies all devices. It caps duration at 180 seconds. Do not overlap it with other speaker probes. Both receivers share a real coordinator; this does not implement independent virtual players, separate AirPlay sessions or an installed controller backend. The recorded run had one late sender packet, and no audible continuity test.
+
+### Controller test command and nonzero PCM
+
+The controller now exposes the ordinary and detached experiments from a full checkout on a Mac or modern Linux test host. Build the local C library first:
+
+```sh
+make -C research/sonos-native/native
+python3 tools/airconnectctl.py udp-test --receiver SPEAKER_IP --receiver-id SPEAKER_UUID --coordinator HELPER_IP --coordinator-id HELPER_UUID --mode detach --signal tone --seconds 120 --output PRIVATE_RESULTS.json
+```
+
+This sends a quiet 440 Hz PCM signal **with both speakers muted**. Unlike zero PCM, the signal exercises near-full audio datagrams. Both speakers must start stopped and standalone. The command snapshots and restores their source, transport, volume, mute and grouping. It requires Python 3.8+ and a locally built native library. It does not restart AirConnect or install a native backend.
+
+For a listening test, use `--seconds 25 --audible --test-volume 15`. Only an explicit `--audible` unmutes the receiver; the helper stays muted. Audible tests are limited to 30 seconds and volume 25. With `--mode detach`, the first eight seconds provide an ordinary-group reference, followed by promotion and helper release. Listen for whether the tone continues after the transition, and whether it clicks or breaks up. Promotion time is recorded; `--promotion-delay` adjusts it. The default fade is 200 ms at each end. No Play command is sent after detachment.
+
+The new nonzero-PCM detached test lasted 120 seconds, with 21,083 packets and 135 timing replies, but still reported paused. Three sends exceeded the six-millisecond deadline tolerance; these are sender timing observations, not measured audio dropouts. The CLI intentionally returns failure for paused transport even when sender progress succeeds. No automated result claims acoustic playback. See [the follow-up](firmware-research/detached-pcm-followup.txt).

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Bounded silent UDP receiver probe using an ordinary, stopped Sonos coordinator.
+"""Bounded UDP receiver probe using an ordinary, stopped Sonos coordinator.
 
 No AudioIn/VirtualLineIn actions and no Connect-specific setup. This still uses
 another physical speaker for group membership; it is not an independent backend.
 Synthetic handoff is bounded research: current live tests lose the receiver after
 about 76 seconds when the coordinator is absent from trusted topology.
 Requires two stopped standalone speakers and verifies restoration of both.
+Muted by default, including with a nonzero test signal. Audible testing is opt-in.
 """
 import argparse
 import hashlib
@@ -21,6 +22,34 @@ import xml.etree.ElementTree as ET
 from native_sender import NativeSender
 from soap import call
 from probe import values, AV, RC
+from probe_pcm import pcm_packet
+
+
+def validate_options(args):
+    if not 1 <= args.seconds <= 120:
+        raise ValueError('Probe duration must be 1..120 seconds')
+    signal = getattr(args, 'signal', 'silence')
+    if signal not in ('silence', 'tone'):
+        raise ValueError('Unknown test signal')
+    if not 0 <= getattr(args, 'test_volume', 15) <= 25:
+        raise ValueError('Test volume must be 0..25')
+    if getattr(args, 'audible', False):
+        if signal != 'tone' or args.seconds > 30 or args.handoff_to_synthetic:
+            raise ValueError('Audible tests require tone, at most 30 seconds, and no synthetic handoff')
+        if getattr(args, 'promotion_mode', 'retain') == 'resume':
+            raise ValueError('The failed resume experiment is restricted to muted testing')
+    delay = getattr(args, 'promotion_delay', 3)
+    if not 3 <= delay <= 30:
+        raise ValueError('Promotion delay must be 3..30 seconds')
+    if getattr(args, 'promote_receiver', False):
+        if args.handoff_to_synthetic or args.seconds < delay + 2:
+            raise ValueError('Promotion requires two seconds after the delay and no synthetic handoff')
+    elif getattr(args, 'promotion_mode', 'retain') != 'retain':
+        raise ValueError('Promotion mode requires receiver promotion')
+    if args.release_coordinator and not args.handoff_to_synthetic:
+        raise ValueError('Coordinator release requires synthetic handoff')
+    if args.reset_helper_group and not args.release_coordinator:
+        raise ValueError('Helper reset requires coordinator release')
 
 def virtual_identity(receiver_id):
     return 'RINCON_02' + hashlib.sha256(receiver_id.encode()).hexdigest()[:10].upper() + '01400'
@@ -70,11 +99,16 @@ def phase_checks(phase, receiver_id, promote=False, promotion_mode='retain'):
 
 
 def run(args):
+    validate_options(args)
+    audible = getattr(args, 'audible', False)
+    signal = getattr(args, 'signal', 'silence')
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     result = {'actions': [], 'restore_errors': [], 'phases': [],
               'audio_in_calls': 0, 'virtual_line_in_calls': 0,
-              'silent': True, 'independent_setup': False}
+              'silent': not audible, 'signal': signal,
+              'audible_requested': audible, 'acoustic_playback_verified': False,
+              'independent_setup': False}
     virtual_id = virtual_identity(args.receiver_id)
     result['virtual_id'] = virtual_id
     result['started_utc'] = datetime.now(timezone.utc).isoformat()
@@ -148,11 +182,18 @@ def run(args):
                 duration = min(args.seconds, 3) if phase_name == 'ordinary-group' and args.handoff_to_synthetic else args.seconds
                 phase['duration_seconds'] = duration
                 phase['clock_port'] = sender.clock_port
+                if audible:
+                    rc(args.receiver, 'SetVolume', DesiredVolume=getattr(args, 'test_volume', 15))
+                    rc(args.receiver, 'SetMute', DesiredMute=0)
+                else:
+                    if rc(args.receiver, 'GetMute').get('CurrentMute') != '1':
+                        raise RuntimeError('Receiver is not muted; refusing test signal')
+                packet_count = int(duration * 44100 / 251)
                 def produce():
                     try:
-                        for _ in range(int(duration * 44100 / 251)):
+                        for index in range(packet_count):
                             if stop.is_set(): break
-                            sender.write(bytes(1004))
+                            sender.write(pcm_packet(index, packet_count, signal))
                             ready.set()
                     except Exception as exc:
                         errors.append(str(exc))
@@ -172,9 +213,10 @@ def run(args):
                     worker.join(1)
                     phase['progress'].append({'elapsed': round(time.monotonic() - phase_start, 3), **sender.stats()})
                     if (getattr(args, 'promote_receiver', False) and
-                            time.monotonic() - phase_start >= 3 and
+                            time.monotonic() - phase_start >= getattr(args, 'promotion_delay', 3) and
                             not phase.get('promotion_attempted') and worker.is_alive()):
                         phase['promotion_attempted'] = True
+                        phase['promotion_elapsed'] = round(time.monotonic() - phase_start, 3)
                         phase['before_promotion'] = snapshot(args.receiver)
                         promotion_mode = getattr(args, 'promotion_mode', 'retain')
                         promotion_group = (group.get('ID') if promotion_mode == 'retain' else
@@ -194,6 +236,9 @@ def run(args):
                         if promotion_mode == 'resume':
                             av(args.receiver, 'Play', Speed=1)
                             phase['resume_accepted'] = True
+                        phase['receiver_after_transition'] = snapshot(args.receiver)
+                        if not audible and phase['receiver_after_transition']['mute'].get('CurrentMute') != '1':
+                            raise RuntimeError('Receiver mute changed during transition')
                     save()
                 if worker.is_alive(): raise RuntimeError('Sender exceeded bounded duration')
                 if errors: raise RuntimeError(errors[0])
@@ -226,7 +271,8 @@ def run(args):
         if changed:
             # Break the temporary group before restoring either source. Keep both
             # muted until all source/state restoration attempts have completed.
-            operations = [('receiver standalone', lambda: av(args.receiver, 'BecomeCoordinatorOfStandaloneGroup'))]
+            operations = [(ip + ' mute for restore', lambda ip=ip: rc(ip, 'SetMute', DesiredMute=1)) for ip, _ in devices]
+            operations.append(('receiver standalone', lambda: av(args.receiver, 'BecomeCoordinatorOfStandaloneGroup')))
             for ip, _ in devices:
                 operations += [(ip + ' source', lambda ip=ip: av(ip, 'SetAVTransportURI',
                     CurrentURI=before[ip]['media']['CurrentURI'], CurrentURIMetaData=before[ip]['media']['CurrentURIMetaData'])),
@@ -263,13 +309,15 @@ def main():
     p.add_argument('--handoff-to-synthetic', action='store_true', help='After group setup, test ChangeCoordinator to a synthetic identity')
     p.add_argument('--release-coordinator', action='store_true', help='After handoff, remove receiver from the real coordinator membership list')
     p.add_argument('--reset-helper-group', action='store_true', help='After RemoveMember, request standalone state on the helper to test group independence')
-    p.add_argument('--promote-receiver', action='store_true', help='After three seconds, test receiver promotion while the same sender continues; silent research only')
+    p.add_argument('--signal', choices=('silence', 'tone'), default='silence', help='PCM payload; tone remains muted unless --audible is specified')
+    p.add_argument('--audible', action='store_true', help='Unmute receiver for a tone test of at most 30 seconds')
+    p.add_argument('--test-volume', type=int, default=15, help='Audible test volume, 0..25; original volume is restored')
+    p.add_argument('--promotion-delay', type=int, default=3, help='Seconds before promotion, 3..30, leaving at least two seconds afterward')
+    p.add_argument('--promote-receiver', action='store_true', help='Test receiver promotion while the same sender continues')
     p.add_argument('--promotion-mode', choices=('retain', 'detach', 'resume'), default='retain', help='Promotion: retain old group, restore own group and detach helper, or additionally request Play')
     args = p.parse_args()
-    if args.release_coordinator and not args.handoff_to_synthetic: p.error('--release-coordinator requires --handoff-to-synthetic')
-    if args.reset_helper_group and not args.release_coordinator: p.error('--reset-helper-group requires --release-coordinator')
-    if args.promote_receiver and (args.handoff_to_synthetic or args.seconds < 5): p.error('--promote-receiver requires at least five seconds and cannot combine with synthetic handoff')
-    if args.promotion_mode != 'retain' and not args.promote_receiver: p.error('--promotion-mode requires --promote-receiver')
+    try: validate_options(args)
+    except ValueError as exc: p.error(str(exc))
     result = run(args)
     if not result['phases'] or not all(p.get('transport_check_passed') for p in result['phases']) or result.get('error') or result['restore_errors'] or not all(all(v.values()) for v in result.get('verified', {}).values()):
         raise SystemExit(1)

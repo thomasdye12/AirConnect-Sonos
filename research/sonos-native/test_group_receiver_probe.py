@@ -63,12 +63,57 @@ class Household:
         return {'http_status': 200, 'xml': E.tostring(root).decode()}
 
 class GroupProbeTests(unittest.TestCase):
-    def execute(self, household):
-        with tempfile.TemporaryDirectory() as directory, patch.object(probe, 'call', household.call), patch.object(probe.socket, 'socket', return_value=FakeSocket()), patch.object(probe, 'NativeSender', FakeSender), contextlib.redirect_stdout(io.StringIO()):
+    def execute(self, household, sender=FakeSender, **options):
+        with tempfile.TemporaryDirectory() as directory, patch.object(probe, 'call', household.call), patch.object(probe.socket, 'socket', return_value=FakeSocket()), patch.object(probe, 'NativeSender', sender), contextlib.redirect_stdout(io.StringIO()):
             args = SimpleNamespace(receiver=A, receiver_id=UA, coordinator=B, coordinator_id=UB,
                                    output=str(Path(directory)/'private.json'), seconds=1,
                                    handoff_to_synthetic=False, release_coordinator=False, reset_helper_group=False)
+            for key, value in options.items(): setattr(args, key, value)
             return probe.run(args)
+
+    def test_invalid_audio_options_rejected_before_device_access(self):
+        for options in (dict(audible=True), dict(audible=True, signal='tone', seconds=31),
+                        dict(audible=True, signal='tone', promotion_mode='resume'),
+                        dict(test_volume=26), dict(seconds=121),
+                        dict(promote_receiver=True, seconds=8, promotion_delay=8)):
+            household = Household()
+            with self.subTest(options=options), self.assertRaises(ValueError):
+                self.execute(household, **options)
+            self.assertEqual(household.calls, [])
+
+    def test_nonzero_pcm_stays_muted_and_sender_failure_restores(self):
+        self.check_audio_failure(audible=False)
+
+    def test_audible_sender_failure_mutes_before_source_restore(self):
+        self.check_audio_failure(audible=True)
+
+    def check_audio_failure(self, audible):
+        household = Household()
+        original_call = household.call
+        def call(ip, path, service, name, args):
+            response = original_call(ip, path, service, name, args)
+            if name == 'ChangeTransportSettings':
+                return dict(http_status=200, xml='<response/>')
+            return response
+        household.call = call
+        observed = []
+        class FailingSender(FakeSender):
+            def write(self, pcm):
+                observed.append((household.mutes.copy(), pcm))
+                raise OSError('simulated PCM send failure')
+        result = self.execute(household, sender=FailingSender, signal='tone', audible=audible)
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(observed[0][0], {A: '0' if audible else '1', B: '1'})
+        self.assertNotEqual(observed[0][1], bytes(1004))
+        self.assertEqual(result['silent'], not audible)
+        self.assertFalse(result['acoustic_playback_verified'])
+        self.assertTrue(all(all(v.values()) for v in result['verified'].values()))
+        self.assertEqual(result['restore_errors'], [])
+        restore_index = next(i for i, (ip, name, args) in enumerate(household.calls)
+                             if ip == A and name == 'SetAVTransportURI' and args['CurrentURI'] == 'original-a')
+        prior_mute = [args['DesiredMute'] for ip, name, args in household.calls[:restore_index]
+                      if ip == A and name == 'SetMute'][-1]
+        self.assertEqual(prior_mute, 1)
     def test_playing_helper_refused_before_any_mutation(self):
         household = Household(playing=True)
         with self.assertRaises(RuntimeError): self.execute(household)
