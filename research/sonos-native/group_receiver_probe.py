@@ -26,6 +26,20 @@ def virtual_identity(receiver_id):
     return 'RINCON_02' + hashlib.sha256(receiver_id.encode()).hexdigest()[:10].upper() + '01400'
 
 
+def promotion_arguments(coordinator_id, group_id, settings, uri):
+    """State-transfer probe; empty transport source is deliberately diagnostic.
+
+    The firmware parser may leave default transport settings when the final
+    source is empty. Acceptance must never be treated as a working UDP sink.
+    """
+    return dict(InstanceID=0, CurrentCoordinator=coordinator_id,
+                CurrentGroupID=group_id, OtherMembers='',
+                TransportSettings=settings.rsplit(',', 1)[0] + ',',
+                CurrentURI=uri, CurrentURIMetaData='', SleepTimerState='',
+                AlarmState='', StreamRestartState='', SharedQueueTrackList='',
+                PrivateQueueTrackList='', CurrentVLIState='')
+
+
 def group_for(topology, uid):
     return next((g for g in ET.fromstring(topology['ZoneGroupState']).iter('ZoneGroup')
                  if any(m.get('UUID') == uid for m in g.iter('ZoneGroupMember'))), None)
@@ -34,6 +48,25 @@ def group_for(topology, uid):
 def standalone(snapshot, uid):
     group = group_for(snapshot['topology'], uid)
     return group is not None and group.get('Coordinator') == uid and len(list(group.iter('ZoneGroupMember'))) == 1
+
+
+def phase_checks(phase, receiver_id, promote=False, promotion_mode='retain'):
+    """Keep sender progress separate from claimed playback/session success."""
+    stats = phase['stats']
+    phase['sender_check_passed'] = (phase.get('setup_accepted', False) and
+        not phase.get('error') and phase.get('duration_seconds', 0) > 0 and
+        stats['clock_requests'] > 0 and
+        stats['packets'] == int(phase['duration_seconds'] * 44100 / 251))
+    phase['transport_check_passed'] = (phase['sender_check_passed'] and
+        phase.get('state', {}).get('CurrentTransportState') == 'PLAYING' and
+        phase.get('state', {}).get('CurrentTransportStatus') == 'OK')
+    if promote:
+        phase['promotion_check_passed'] = (phase.get('promotion_accepted', False) and
+            phase['transport_check_passed'] and
+            phase.get('receiver_group_coordinator') == receiver_id and
+            (promotion_mode == 'retain' or
+             (phase.get('helper_standalone', False) and phase.get('receiver_standalone', False))))
+        phase['transport_check_passed'] = phase['promotion_check_passed']
 
 
 def run(args):
@@ -48,10 +81,11 @@ def run(args):
     started = time.monotonic()
     def save():
         output.write_text(json.dumps(result, indent=2) + '\n')
-    def action(ip, name, arguments, path=AV, service='AVTransport'):
-        response = call(ip, path, service, name, arguments)
+    def action(ip, name, arguments, path=AV, service='AVTransport', headers=None):
+        response = call(ip, path, service, name, arguments, **({'headers': headers} if headers else {}))
         result['actions'].append({'at': round(time.monotonic()-started, 4), 'ip': ip,
                                   'action': name, 'arguments': arguments, 'response': response})
+        if headers: result['actions'][-1]['headers'] = headers
         save()
         return values(response)
     def av(ip, name, **kw): return action(ip, name, {'InstanceID': 0, **kw})
@@ -137,6 +171,29 @@ def run(args):
                 while worker.is_alive() and time.monotonic() - phase_start < duration + 5:
                     worker.join(1)
                     phase['progress'].append({'elapsed': round(time.monotonic() - phase_start, 3), **sender.stats()})
+                    if (getattr(args, 'promote_receiver', False) and
+                            time.monotonic() - phase_start >= 3 and
+                            not phase.get('promotion_attempted') and worker.is_alive()):
+                        phase['promotion_attempted'] = True
+                        phase['before_promotion'] = snapshot(args.receiver)
+                        promotion_mode = getattr(args, 'promotion_mode', 'retain')
+                        promotion_group = (group.get('ID') if promotion_mode == 'retain' else
+                                           group_for(before[args.receiver]['topology'], args.receiver_id).get('ID'))
+                        phase['promotion_mode'] = promotion_mode
+                        action(args.receiver, 'BecomeGroupCoordinator',
+                               promotion_arguments(args.coordinator_id, promotion_group, settings,
+                                                   'x-rincon-stream:' + virtual_id + ':0'),
+                               headers={'x-sonos-clone-gc': '1'})
+                        phase['promotion_accepted'] = True
+                        phase['after_promotion'] = snapshot(args.receiver)
+                        if promotion_mode != 'retain':
+                            action(args.coordinator, 'RemoveMember', {'MemberID': args.receiver_id}, '/GroupManagement/Control', 'GroupManagement')
+                            phase['remove_member_accepted'] = True
+                            phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
+                            phase['after_helper_detach'] = snapshot(args.receiver)
+                        if promotion_mode == 'resume':
+                            av(args.receiver, 'Play', Speed=1)
+                            phase['resume_accepted'] = True
                     save()
                 if worker.is_alive(): raise RuntimeError('Sender exceeded bounded duration')
                 if errors: raise RuntimeError(errors[0])
@@ -147,6 +204,7 @@ def run(args):
                 phase['helper_standalone'] = standalone(phase['coordinator_state'], args.coordinator_id)
                 receiver_group = group_for(phase['topology'], args.receiver_id)
                 phase['receiver_group_coordinator'] = receiver_group.get('Coordinator') if receiver_group is not None else None
+                phase['receiver_standalone'] = standalone({'topology': phase['topology']}, args.receiver_id)
             except Exception as exc:
                 phase['error'] = str(exc)
                 try:
@@ -159,10 +217,8 @@ def run(args):
                 if worker: worker.join()
                 phase['stats'] = sender.stats()
                 sender.close()
-                phase['transport_check_passed'] = (phase.get('setup_accepted', False) and not phase.get('error') and
-                    phase['stats']['clock_requests'] > 0 and
-                    phase['stats']['packets'] == int(phase.get('duration_seconds', 0) * 44100 / 251) and
-                    phase.get('state', {}).get('CurrentTransportState') == 'PLAYING')
+                phase_checks(phase, args.receiver_id, getattr(args, 'promote_receiver', False),
+                             getattr(args, 'promotion_mode', 'retain'))
                 save()
     except Exception as exc:
         result['error'] = str(exc)
@@ -194,7 +250,7 @@ def run(args):
                 except Exception as exc: result['restore_errors'].append({'step': ip + ' verification', 'error': str(exc)})
         save()
     summary = {k: result[k] for k in ('error', 'verified', 'restore_errors') if k in result}
-    summary['phases'] = [{k: p[k] for k in ('name', 'setup_accepted', 'stats', 'state', 'error', 'transport_check_passed', 'helper_standalone', 'receiver_group_coordinator') if k in p} for p in result['phases']]
+    summary['phases'] = [{k: p[k] for k in ('name', 'setup_accepted', 'stats', 'state', 'error', 'sender_check_passed', 'transport_check_passed', 'helper_standalone', 'receiver_standalone', 'receiver_group_coordinator') if k in p} for p in result['phases']]
     print(json.dumps(summary, indent=2))
     return result
 
@@ -207,9 +263,13 @@ def main():
     p.add_argument('--handoff-to-synthetic', action='store_true', help='After group setup, test ChangeCoordinator to a synthetic identity')
     p.add_argument('--release-coordinator', action='store_true', help='After handoff, remove receiver from the real coordinator membership list')
     p.add_argument('--reset-helper-group', action='store_true', help='After RemoveMember, request standalone state on the helper to test group independence')
+    p.add_argument('--promote-receiver', action='store_true', help='After three seconds, test receiver promotion while the same sender continues; silent research only')
+    p.add_argument('--promotion-mode', choices=('retain', 'detach', 'resume'), default='retain', help='Promotion: retain old group, restore own group and detach helper, or additionally request Play')
     args = p.parse_args()
     if args.release_coordinator and not args.handoff_to_synthetic: p.error('--release-coordinator requires --handoff-to-synthetic')
     if args.reset_helper_group and not args.release_coordinator: p.error('--reset-helper-group requires --release-coordinator')
+    if args.promote_receiver and (args.handoff_to_synthetic or args.seconds < 5): p.error('--promote-receiver requires at least five seconds and cannot combine with synthetic handoff')
+    if args.promotion_mode != 'retain' and not args.promote_receiver: p.error('--promotion-mode requires --promote-receiver')
     result = run(args)
     if not result['phases'] or not all(p.get('transport_check_passed') for p in result['phases']) or result.get('error') or result['restore_errors'] or not all(all(v.values()) for v in result.get('verified', {}).values()):
         raise SystemExit(1)

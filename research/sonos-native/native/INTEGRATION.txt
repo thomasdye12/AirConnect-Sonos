@@ -1,4 +1,11 @@
-LATEST: ordinary stopped-speaker grouping also establishes the native receiver;
+LATEST ROLE TEST: self-promotion with own group ID and membership cleanup kept
+UDP/timing alive for 120 seconds after releasing the helper. Sonos reported
+PAUSED_PLAYBACK; audible rendering remains unverified. Initial setup still uses
+another stopped speaker. Do not integrate this as a working AirPlay backend.
+See ../firmware-research/coordinator-role-followup.txt. Separate retained-helper
+receivers passed 90/150-second silent control checks with independent stopping.
+
+PREVIOUS: ordinary stopped-speaker grouping also establishes the native receiver;
 Connect-specific AudioIn setup is no longer required. Sustained independent
 software coordination remains unresolved (roughly 76-second orphan timeout).
 See ../firmware-research/ordinary-group-udp-tests.txt. Earlier results below remain

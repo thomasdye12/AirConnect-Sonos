@@ -1,0 +1,367 @@
+{
+  "date": "2026-10-14",
+  "installed_build": "86.10-80260",
+  "static_reference_build": "86.10-81100",
+  "silent": true,
+  "production_bridge_modified": false,
+  "independent_setup_solved": false,
+  "audible_quality_verified": false,
+  "acoustic_latency_measured": false,
+  "promotion_cases": [
+    {
+      "case": "initial-helper-reset",
+      "receiver": "receiver_a",
+      "started_utc": "2026-10-14T16:41:22.606424+00:00",
+      "private_evidence_sha256": "05745f05391ca23fdaad641a1ce07e83ac68438cc3902a8ead1df99dacfe1945",
+      "requested_seconds": 15,
+      "promotion_accepted": true,
+      "resume_accepted": false,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 628,
+        "clock_requests": 7,
+        "late_packets": 0
+      },
+      "sender_check_passed": false,
+      "playback_check_passed": false,
+      "receiver_standalone": null,
+      "helper_standalone": null,
+      "restored": true,
+      "restore_errors": [],
+      "error": "UDP connection refused"
+    },
+    {
+      "case": "isolated-retain",
+      "receiver": "receiver_a",
+      "started_utc": "2026-10-14T16:52:22.035951+00:00",
+      "private_evidence_sha256": "8940b4ca20a082069eab9bb81d855928e808f517141ab70ef61ca670d4439402",
+      "requested_seconds": 15,
+      "promotion_accepted": true,
+      "resume_accepted": false,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 2635,
+        "clock_requests": 30,
+        "late_packets": 0
+      },
+      "sender_check_passed": true,
+      "playback_check_passed": false,
+      "receiver_standalone": false,
+      "helper_standalone": false,
+      "restored": true,
+      "restore_errors": []
+    },
+    {
+      "case": "detached-short",
+      "receiver": "receiver_a",
+      "started_utc": "2026-10-14T16:53:45.351763+00:00",
+      "private_evidence_sha256": "274e57eb84755fd1191c56e3a0685621916a923112a9cb911837b864805503e8",
+      "requested_seconds": 15,
+      "promotion_accepted": true,
+      "resume_accepted": false,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 2635,
+        "clock_requests": 30,
+        "late_packets": 0
+      },
+      "sender_check_passed": true,
+      "playback_check_passed": false,
+      "receiver_standalone": true,
+      "helper_standalone": true,
+      "restored": true,
+      "restore_errors": []
+    },
+    {
+      "case": "detached-resume",
+      "receiver": "receiver_a",
+      "started_utc": "2026-10-14T16:54:18.195237+00:00",
+      "private_evidence_sha256": "80fc2c686f3e2ff0a3d8fae1766b72b5148e34c24f75130525e6132b98cd92cb",
+      "requested_seconds": 15,
+      "promotion_accepted": true,
+      "resume_accepted": true,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 690,
+        "clock_requests": 8,
+        "late_packets": 0
+      },
+      "sender_check_passed": false,
+      "playback_check_passed": false,
+      "receiver_standalone": null,
+      "helper_standalone": null,
+      "restored": true,
+      "restore_errors": [],
+      "error": "UDP connection refused"
+    },
+    {
+      "case": "detached-endurance",
+      "receiver": "receiver_a",
+      "started_utc": "2026-10-14T16:54:42.844292+00:00",
+      "private_evidence_sha256": "711ba5a6f83be7893a7f2d08d9a1ca284b004e48c8583b0a5c68a3553b2e87c0",
+      "requested_seconds": 120,
+      "promotion_accepted": true,
+      "resume_accepted": false,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 21083,
+        "clock_requests": 135,
+        "late_packets": 1
+      },
+      "sender_check_passed": true,
+      "playback_check_passed": false,
+      "receiver_standalone": true,
+      "helper_standalone": true,
+      "restored": true,
+      "restore_errors": []
+    },
+    {
+      "case": "second-receiver-helper-reuse",
+      "receiver": "receiver_b",
+      "started_utc": "2026-10-14T16:55:58.567638+00:00",
+      "private_evidence_sha256": "00f2722f0bfbf440dfd33b0840dd02db9ff313cc97b32547a4d1c10e0ab97950",
+      "requested_seconds": 15,
+      "promotion_accepted": true,
+      "resume_accepted": false,
+      "before_state": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_promotion_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "final_state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "stats": {
+        "packets": 659,
+        "clock_requests": 8,
+        "late_packets": 0
+      },
+      "sender_check_passed": false,
+      "playback_check_passed": false,
+      "receiver_standalone": null,
+      "helper_standalone": null,
+      "restored": true,
+      "restore_errors": [],
+      "error": "UPnP error 800 in RemoveMember"
+    }
+  ],
+  "concurrent_control": {
+    "private_evidence_sha256": "d524c1e6d43970695c2b36a33961163604598cb7ba133fd92d8f70180fd44dc6",
+    "passed": true,
+    "checks": {
+      "both_playing_in_overlap": true,
+      "first_playing_before_stop": true,
+      "first_stopped": true,
+      "second_playing_after_first_stop": true,
+      "second_playing_at_end": true,
+      "helper_stopped": true,
+      "second_packets_continue": true
+    },
+    "streams": {
+      "receiver_a": {
+        "requested_seconds": 90,
+        "stats": {
+          "packets": 15812,
+          "clock_requests": 120,
+          "late_packets": 0
+        },
+        "sender_complete": true
+      },
+      "receiver_b": {
+        "requested_seconds": 150,
+        "stats": {
+          "packets": 26354,
+          "clock_requests": 151,
+          "late_packets": 1
+        },
+        "sender_complete": true
+      }
+    },
+    "separate_timing_ports": true,
+    "overlap": {
+      "receiver_a": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "receiver_b": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "coordinator": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      }
+    },
+    "after_first_stop": {
+      "receiver_a": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "receiver_b": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "coordinator": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      }
+    },
+    "end": {
+      "receiver_a": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "receiver_b": {
+        "CurrentTransportState": "PLAYING",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "coordinator": {
+        "CurrentTransportState": "STOPPED",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      }
+    },
+    "verified": {
+      "receiver_a": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "receiver_b": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "coordinator": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      }
+    },
+    "restore_errors": []
+  },
+  "after_helper_reuse_observation": {
+    "observed_utc": "2026-10-14T16:56:15.684014+00:00",
+    "devices": {
+      "receiver_a": {
+        "state": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "self_coordinator": true,
+        "member_count": 1
+      },
+      "receiver_b": {
+        "state": {
+          "CurrentTransportState": "STOPPED",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "self_coordinator": true,
+        "member_count": 1
+      },
+      "helper": {
+        "state": {
+          "CurrentTransportState": "STOPPED",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "self_coordinator": true,
+        "member_count": 1
+      }
+    }
+  },
+  "offline_checks_passed": 11
+}

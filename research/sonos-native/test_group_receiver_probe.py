@@ -94,4 +94,34 @@ class GroupProbeTests(unittest.TestCase):
         self.assertNotEqual(probe.virtual_identity(UA), probe.virtual_identity(UB))
         self.assertRegex(probe.virtual_identity(UA), r'^RINCON_02[0-9A-F]{10}01400$')
 
+    def completed_phase(self):
+        return dict(setup_accepted=True, promotion_accepted=True, duration_seconds=120,
+                    stats=dict(packets=21083, clock_requests=135),
+                    state=dict(CurrentTransportState='PLAYING', CurrentTransportStatus='OK'),
+                    receiver_group_coordinator=UA, receiver_standalone=True, helper_standalone=True)
+
+    def test_paused_receiver_is_not_reported_as_playback_success(self):
+        phase = self.completed_phase()
+        phase['state']['CurrentTransportState'] = 'PAUSED_PLAYBACK'
+        probe.phase_checks(phase, UA, True, 'detach')
+        self.assertTrue(phase['sender_check_passed'])
+        self.assertFalse(phase['transport_check_passed'])
+
+    def test_detached_promotion_requires_both_standalone(self):
+        for key in ('receiver_standalone', 'helper_standalone'):
+            with self.subTest(key=key):
+                phase = self.completed_phase()
+                phase[key] = False
+                probe.phase_checks(phase, UA, True, 'detach')
+                self.assertFalse(phase['transport_check_passed'])
+
+    def test_full_control_state_required_alongside_sender_progress(self):
+        phase = self.completed_phase()
+        probe.phase_checks(phase, UA, True, 'detach')
+        self.assertTrue(phase['transport_check_passed'])
+        phase['stats']['packets'] -= 1
+        probe.phase_checks(phase, UA, True, 'detach')
+        self.assertFalse(phase['sender_check_passed'])
+        self.assertFalse(phase['transport_check_passed'])
+
 if __name__ == '__main__': unittest.main()

@@ -1,4 +1,13 @@
-LATEST FOLLOW-UP: ordinary-group UDP tests no longer require a Connect or line-in.
+LATEST FOLLOW-UP: a self-promoted receiver kept UDP/timing alive for 120 seconds
+with the helper released, avoiding the previous orphan shutdown in that test.
+It reported PAUSED_PLAYBACK, and audible rendering is unverified. Initial setup
+still uses another real stopped speaker. Explicit Play ended the native stream;
+Kitchen's helper-detach attempt returned 800. This is not a working backend.
+Separately, retained-coordinator receivers passed 90/150-second silent PLAYING
+checks including stopping one while the other continued.
+See coordinator-role-followup.txt and .json for the seven cases and limitations.
+
+PREVIOUS FOLLOW-UP: ordinary-group UDP tests no longer require a Connect or line-in.
 A valid ordinary Sonos coordinator supported a 120-second silent stream. Synthetic
 coordinator handoff is temporary: isolated tests lose the receiver around 76 seconds.
 See ordinary-group-udp-tests.txt for the observed results and topology-monitor trace.

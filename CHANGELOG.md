@@ -2,6 +2,8 @@
 
 ## Research follow-up — 2026-10-14
 
+Two silent native UDP receivers now passed a shared-coordinator control for 90 and 150 seconds, including stopping the first while the second continued. Added a centralized three-speaker probe and four failure-path tests. Self-promotion with corrected group/membership cleanup kept UDP/timing alive for 120 seconds after releasing the helper, but Sonos reported paused and audible rendering remains unverified. Initial helper-assisted setup remains necessary. Added three checks separating sender progress from playback success. See `coordinator-role-followup.txt` for evidence and limits. Production playback is unchanged.
+
 Ordinary group setup supported a 120-second silent native UDP stream without Connect-specific or line-in calls. Two software-source receiver streams were observed concurrently, but an isolated long run confirms a roughly 76-second orphaned-group failure. Added the bounded probe, four rollback/preflight tests, sanitized evidence and a nearby-firmware coordinator-monitor trace. This does not change the deployed tds2 bridge or establish an independent native backend.
 
 ## v1.12.4-tds2 — 2026-10-14

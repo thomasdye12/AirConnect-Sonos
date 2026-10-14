@@ -1,11 +1,11 @@
 # Sonos transport research
 
-These are research tools alongside AirConnect-Sonos, not an installed AirPlay output backend. Start here instead of the chronological notes. Latest follow-up: [ordinary-group UDP tests](firmware-research/ordinary-group-udp-tests.txt) remove the Connect-specific requirement, but sustained operation still needs a valid real coordinator. No virtual player needs to run for normal AirConnect playback.
+These are research tools alongside AirConnect-Sonos, not an installed AirPlay output backend. Start here instead of the chronological notes. Latest follow-up: [coordinator role and concurrent receivers](firmware-research/coordinator-role-followup.txt) verifies two bounded silent streams with a retained real coordinator. A promoted standalone receiver also kept UDP/timing alive for 120 seconds after releasing its helper, but reported paused and has no audible validation. Fully independent setup remains unresolved. No virtual player needs to run for normal AirConnect playback.
 
 | Path | Evidence | Remaining work |
 | --- | --- | --- |
 | Normal AirConnect UPnP HTTP | Existing deployed bridge; user-confirmed music | Dynamic artwork and acoustic latency improvements |
-| Native UDP PCM | Historical clear music with Connect setup; now a 120-second silent run with an ordinary stopped coordinator, no line-in calls; two temporary software-source streams observed concurrently | Software-coordinator streams time out around 76 seconds; independent setup, recovery, drift and AirPlay integration remain unfinished |
+| Native UDP PCM | Historical clear music with Connect setup; silent ordinary-group receivers ran for 90 and 150 seconds, with one stopping while the other continued; no Connect or line-in calls | Synthetic coordinator times out around 76 seconds. Self-promotion kept a detached endpoint alive for 120 seconds but reported paused; audible rendering, helper-free bootstrap, recovery, drift and AirPlay integration remain unfinished |
 | Local API HTTP audioClip | Silent finite streams of 12 and 40 seconds; lengthless streams; separate streams/cancellation on two speakers without Connect | Listening test, longer endurance, actual latency, AirPlay integration and volume/metadata behavior |
 | Virtual Connect | Discovery/descriptor/TLS observer and compatibility tests | Trusted enrollment and playback; app crashes occurred during earlier experiments |
 
@@ -61,3 +61,13 @@ python3 group_receiver_probe.py --receiver SPEAKER_IP --receiver-id SPEAKER_UUID
 ```
 
 `--handoff-to-synthetic --release-coordinator --reset-helper-group` investigates the orphaned-group failure; it is expected to fail the longer test. These flags do not enroll a virtual Sonos device. Do not run multiple probe processes against a shared helper without coordinating their setup and restoration; this standalone harness is not a session manager.
+
+`--promote-receiver --promotion-mode detach --seconds 120` tests promotion of an active receiver to its own group and removal of the helper. UDP/timing persisted for 120 seconds, but Sonos reported `PAUSED_PLAYBACK`: the command intentionally exits nonzero because the playback check fails. Sender progress is recorded separately from playback success. No audible result is claimed. Initial setup still needs the helper. Mode `retain` keeps the inherited group; mode `resume` additionally requests Play, which ended the native stream in the observed test. Kitchen's detach attempt returned 800 during helper cleanup, so this sequence is not portable or ready to deploy.
+
+For the shared-coordinator concurrency control, one process must own all three devices:
+
+```sh
+python3 multi_receiver_probe.py --first SPEAKER_A_IP --first-id SPEAKER_A_UUID --second SPEAKER_B_IP --second-id SPEAKER_B_UUID --coordinator HELPER_IP --coordinator-id HELPER_UUID --seconds 150 --first-stop 90 --output PRIVATE_RESULTS.json
+```
+
+All three must be stopped and standalone. The command uses silence and mute, detaches/stops the first receiver, checks the second keeps playing, and restores/verifies all devices. It caps duration at 180 seconds. Do not overlap it with other speaker probes. Both receivers share a real coordinator; this does not implement independent virtual players, separate AirPlay sessions or an installed controller backend. The recorded run had one late sender packet, and no audible continuity test.

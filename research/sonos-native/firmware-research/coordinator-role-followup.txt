@@ -1,0 +1,103 @@
+Coordinator role and concurrent native receivers — 14 October 2026
+
+Latest result
+A promoted receiver retained UDP/timing for a full 120-second test after the
+helper was released. The previous roughly 76-second orphan-coordinator shutdown
+did not occur in this case. However, Sonos reported PAUSED_PLAYBACK, not PLAYING.
+This is evidence of a persistent receiver endpoint, NOT verified audible playback.
+Initial setup still briefly uses another real stopped Sonos speaker.
+
+Active-receiver promotion experiments
+1. Server Room joins stopped Utility Room and starts ordinary-group silent UDP.
+2. After three seconds, BecomeGroupCoordinator with x-sonos-clone-gc: 1 requests
+   the receiver's own pre-test group ID, no other members, a synthetic line-in URI
+   and an empty transport source. The command is accepted; topology names the
+   real receiver itself as coordinator. Playback state changes to PAUSED_PLAYBACK.
+3. RemoveMember on the helper removes the receiver, then helper
+   BecomeCoordinatorOfStandaloneGroup releases its old group.
+4. The same C sender and timing endpoint continue; no Play command is issued.
+The 15-second test sent 2,635 packets and received 30 timing requests. The longer
+120-second test sent 21,083 packets, received 135 timing requests and counted one
+late send. Both devices ended in separate standalone groups. The long receiver
+also survived a brief reuse of the helper for a second receiver experiment.
+No Connect, AudioIn, VirtualLineIn, enrollment or security-policy calls were made.
+
+Corrections and negative controls
+- The first promotion used the inherited helper group ID and immediately reset
+  the helper. It failed with ECONNREFUSED after 628 packets and seven timing
+  requests. That sequence did not isolate promotion from helper cleanup.
+- Repeating promotion without resetting the helper kept UDP/timing alive for
+  15 seconds, although state was PAUSED_PLAYBACK. Device topology views disagreed
+  about the old group's coordinator. Promotion alone did not close the sink.
+- Using the receiver's own group ID and removing stale membership before helper
+  reset preserved the endpoints in the 15/120-second tests described above.
+- Adding Play after detached promotion returned success but ended the native
+  stream: ECONNREFUSED after 690 packets/eight clock requests. The failure
+  snapshot was STOPPED with its prior source URI. Play acceptance is not proof
+  of native source activation or retained playback.
+- Kitchen accepted promotion but the helper's subsequent RemoveMember returned
+  800. That test aborted and restored both devices. It does not prove two
+  concurrent detached sessions; the observer ran after Kitchen was restored.
+  Server Room's long test continued through the helper reuse and cleanup.
+- The promoted receiver tests deliberately fail the harness playback check when
+  state is PAUSED_PLAYBACK, even if all planned packets and clocks complete.
+
+Concurrent PLAYING control with retained coordinator
+A separate centralized test managed two receivers with stopped Utility Room as
+coordinator. Both joined the same ordinary group and received separate unicast
+zero-PCM streams from distinct C senders and timing ports.
+- Server Room: 90 seconds, 15,812 packets, 120 timing requests, zero late sends.
+- Kitchen: 150 seconds, 26,354 packets, 151 timing requests, one late send.
+- Both reported PLAYING/OK during overlap. Server Room was PLAYING/OK just before
+  detachment, restoration to its previous source, and Stop at 90 seconds.
+- Kitchen stayed PLAYING/OK immediately after that stop and at the end; its
+  packet count continued increasing. The helper remained STOPPED/OK.
+This verifies bounded concurrent receiver control and independent stopping with
+one retained physical coordinator. Both streams contained silence. Different
+music content, audible continuity and separate AirPlay integration are unverified.
+A late-send counter here means the sender was over six milliseconds past its
+scheduled packet deadline; it is not a measured speaker dropout.
+
+Static explanation — nearby Play:3 86.10-81100, installed 86.10-80260
+- monitorCoordinator's self-coordinator branch at 0x1034a048..0x1034a060 clears
+  the failure counter and returns zero; its wrapper then stops periodic checks.
+  This is consistent with the detached endpoint lasting past the old timeout.
+  It is not an installed-build stack trace or proof of acoustic rendering.
+- Peer-group lookup at 0x10694f0c first uses eligible lookup 0x1069e1c0, then
+  0x1069b91c requires peer flags +0x1f18 and +0x1f4b and calls 0x10699620.
+  Only then is group ID +0xde5 copied and compared. Matching an advertised
+  group ID alone does not establish eligibility for a synthetic coordinator.
+- The transport parser 0x105c661c requires its tokens, including the final source.
+  An empty source can leave default settings. The successful promotion need not
+  install the sender endpoints in its request; the prior active sink may persist.
+- BecomeGroupCoordinatorAndSource at 0x102bc848 parses CurrentSourceState through
+  0x102f0bac (call at 0x102bcc78). It expects 164 characters: 100 characters of
+  15 fixed-width hexadecimal fields and a 64-character source-format string.
+  Success requires 15 conversions and format parsing. Serializer 0x102f0968
+  uses the same format at 0x10c132d4. Field meanings are not all reconstructed.
+  This is not simply a sender IP/UDP-port string; no usable external-source
+  activation through this alternate method has been established.
+- The exposed /status index and /support/review did not provide coordinator-loss
+  logs. Diagnostics did not confirm the inferred monitor by a runtime trace.
+
+Code, restoration and next gate
+multi_receiver_probe.py owns all three devices for the retained-coordinator test,
+so stopping one does not restore the shared helper beneath the other. It requires
+stopped standalone devices, allocates both senders before mutation, caps duration
+at 180 seconds, sends silence only and verifies restoration.
+group_receiver_probe.py --promote-receiver --promotion-mode detach tests the
+promoted state; mode retain keeps the old group, and resume additionally calls
+Play. These are experimental sequences, not a deployable session manager.
+Eleven offline checks passed, including allocation failure, refusal, independent
+rollback attempts, and preventing packet/clock progress from becoming a false
+playback-success result. All seven live cases verified original source/metadata,
+transport, mute, volume and standalone grouping restored, with no restore errors.
+Production AirConnect was not changed or restarted. No firmware or pairing work.
+
+Next useful gate: determine whether the detached PAUSED_PLAYBACK state actually
+renders incoming PCM, through a controlled listening test when available. Then
+resolve helper-detachment portability and the remaining bootstrap dependency.
+Do not claim independent audible playback, measured latency or an integrated
+AirPlay backend from these silent results.
+Structured evidence: coordinator-role-followup.json. Private captures, household
+identifiers, addresses, raw device state and disassembly remain outside GitHub.
