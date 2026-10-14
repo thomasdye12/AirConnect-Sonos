@@ -1,0 +1,21 @@
+[Unit]
+Description=AirConnect read-only bridge dashboard
+After=network-online.target airplay_sonos.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=DASHBOARD_BIND=127.0.0.1
+Environment=DASHBOARD_PORT=8088
+EnvironmentFile=-/etc/default/airconnect-dashboard
+ExecStart=/usr/bin/python3 /var/airplay_sonos/dashboard/airconnect_dashboard.py --bind ${DASHBOARD_BIND} --port ${DASHBOARD_PORT}
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+ReadOnlyDirectories=/var/airplay_sonos /var/log
+
+[Install]
+WantedBy=multi-user.target

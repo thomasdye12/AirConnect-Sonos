@@ -15,6 +15,24 @@ Based on AirConnect v1.12.4 at [`5fdb61e`](https://github.com/philippe44/AirConn
 - **Experimental artwork reception:** accepts JPEG/PNG sent by the AirPlay source and serves the current image for the session instead of expiring it after two minutes. Image updates get distinct URLs.
 - **Direct systemd startup:** uses `-Z` for non-interactive operation, avoiding the original local shell/PHP launcher and its observed excessive CPU usage. Logging is capped at 5 MB.
 
+## Local web dashboard
+
+The optional [read-only dashboard](tools/airconnect_dashboard.py) runs independently of audio playback, using Python 3.4+ and its standard library. It shows service health, room names and saved output settings, per-room sync offsets, native session ownership, Sonos-reported volume/track state, recent completed-session counters and a filtered event log. The responsive page includes an explanation of the audio path and a JSON diagnostics download.
+
+On the bridge, from this checkout:
+
+```sh
+sudo sh deploy/install-dashboard.sh BRIDGE_LAN_IPV4 8088
+```
+
+Open `http://BRIDGE_LAN_IPV4:8088`. The installer backs up an existing dashboard, enables `airconnect-dashboard.service`, and prints its rollback script. It does **not** restart the audio service. The bind address and port are in `/etc/default/airconnect-dashboard`; restart only the dashboard after changing them. To stop it: `sudo systemctl disable --now airconnect-dashboard.service`.
+
+This is an unauthenticated, read-only LAN monitor. Bind it to the bridge's LAN address; do not publish it on the internet. It has no playback, configuration-write or shell endpoints, does not serve arbitrary files, and rejects unconfigured HTTP Host names. Diagnostics contain local room names, addresses and recent logs; review before sharing publicly. For manual use, `python3 tools/airconnect_dashboard.py --bind BRIDGE_LAN_IPV4 --port 8088` uses the existing production config and log paths; `--config`, `--log` and `--allow-host` can override these.
+
+Service and native lock ownership refresh every five seconds; room API data refreshes every fifteen seconds. Native ownership comes from the running process's actual `flock` leases, not stale lock files or a past start message. A held lease includes setup, paused sessions and restoration; it is not proof of audible sound. Sonos may report paused while native UDP audio plays. Packet counters and PCM continuity counters are **final session summaries**, not live meters; the current log cannot reliably associate PCM summaries with a room. The log reader is bounded to its last 2 MiB, and the UI explicitly marks stale API/collector data. Saved configuration may differ from the running process until the bridge restarts.
+
+Run dashboard regressions with `python3 -m unittest discover -s tests -p 'test_dashboard.py'` (opens a temporary localhost HTTP listener).
+
 ## Native UDP AirPlay (tds4)
 
 **tds4 fixes an audio-continuity regression in tds3.** The original per-block timing gate could insert silence and skip queued audio even with no packet loss, because the paced UDP writer returns before the next PCM sample's deadline. Native output now advances a sample-counted cursor and tolerates small clock corrections without modifying the stream. A [deterministic regression and muted live test](research/sonos-native/firmware-research/native-pcm-continuity.json) reproduce the old corruption and verify the corrected output. Use tds4 for native playback.
