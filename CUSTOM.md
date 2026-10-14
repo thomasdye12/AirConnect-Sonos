@@ -85,3 +85,19 @@ common default is zero and device overrides are supported. The user reported
 roughly 500 ms early audio and a two-second pause tail after the initial timing
 fix. Kitchen received a 500 ms calibration for a further check. The pause tail
 remains unresolved; no pause-command arrival time was tied to the user's tap.
+
+Native continuity correction (tds4)
+---------------------------------
+The tds3 scheduler incorrectly compared the next decoded frame with the time at
+which `sonos_sender_write` returned. The sender accepts 352-sample input blocks
+but emits complete 251-sample packets, so that return can precede the next input
+sample by several milliseconds. Inserting a whole silent block on this path
+corrupted audio and could cause a subsequent frame drop. The old counters did
+not expose these insertions or drops of four or fewer frames.
+
+The output thread now anchors a local cursor at first submission and advances
+it by all submitted samples, including silence. FLUSH preserves that output
+clock and resets input alignment. Once aligned, clock differences within 20 ms
+do not alter contiguous PCM. Larger discontinuities re-anchor with explicit
+logs; final counters include waiting blocks, dropped frames and realignments.
+This does not implement resampling or prove long-term drift-free playback.

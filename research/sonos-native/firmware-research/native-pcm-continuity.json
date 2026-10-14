@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-14",
+  "version": "v1.12.4-tds4",
+  "problem": "tds3 compared wall-clock return time with the next PCM presentation deadline, inserting whole silent blocks and dropping subsequent data despite no RTP loss.",
+  "fix": "Sample-counted output cursor; preserve continuous PCM through small clock corrections; re-anchor on FLUSH or timing discontinuities beyond 20 ms.",
+  "regression": {
+    "model": "352-sample PCM writes split into 251-sample UDP packets, last-complete-packet return time, 3 ms scheduling variation and 2 ms sync corrections",
+    "stereo_sample_frames": 56320,
+    "before": {
+      "unexpected_zero_frames": 20416,
+      "changed_frames": 55968
+    },
+    "after": {
+      "unexpected_zero_frames": 0,
+      "changed_frames": 0
+    },
+    "platforms": [
+      "macOS ARM64",
+      "Linux ARMv7"
+    ],
+    "additional_checks": [
+      "Future audio retained",
+      "FLUSH clears queued data and resumes",
+      "Forward/backward timing discontinuity recovery",
+      "RTP timestamp wrap",
+      "Exactly-once sink close"
+    ]
+  },
+  "muted_live_test": {
+    "platform": "macOS ARM64",
+    "receiver": "Server Room",
+    "input_seconds": 20,
+    "flush_after_seconds": 10,
+    "pause_seconds": 2,
+    "tcp_disconnect_without_teardown": true,
+    "pcm_samples": 1056704,
+    "wait_blocks_including_startup_pause_and_tail": 799,
+    "dropped_frames": 0,
+    "realignments": 0,
+    "udp_packets": 4209,
+    "clock_requests": 48,
+    "late_udp_packets": 0,
+    "nonzero_pcm_frames": 775105,
+    "helper_restored": true,
+    "receiver_restored": true,
+    "acoustic_quality_proven": false,
+    "private_log_sha256": "494c4afa14b66c3a12fdd3cccf49b5eb9f6d6b6ebc135d1d95884a8421852a3b"
+  },
+  "deployment": {
+    "installed": true,
+    "room_calibration_preserved_ms": 210,
+    "binary_sha256": "41f63d4c5e6c1ff96abc13276df253fd9703026cfac0039cef51ccc9f0556293"
+  },
+  "listener_confirmation": "pending",
+  "limitations": [
+    "20 ms tolerance is partial synchronization, not sample-rate resampling.",
+    "Long-term clock drift/endurance unverified.",
+    "Previous pause tail was reported much improved; its exact cause is not established."
+  ]
+}

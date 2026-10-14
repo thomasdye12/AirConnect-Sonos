@@ -22,7 +22,7 @@
 #include "metadata.h"
 #include "sonos_native.h"
 
-#define VERSION "v1.12.4-tds3 ("__DATE__" @ "__TIME__")"
+#define VERSION "v1.12.4-tds4 ("__DATE__" @ "__TIME__")"
 
 /*----------------------------------------------------------------------------*/
 /* typedefs */

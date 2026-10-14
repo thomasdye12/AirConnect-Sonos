@@ -271,7 +271,7 @@ index 642fc9f..91ff226 100644
  void  	raopsr_delete(struct raopsr_s *ctx);
  void	raopsr_notify(struct raopsr_s *ctx, raopsr_event_t event, void *param);
 diff --git a/src/raop_streamer.c b/src/raop_streamer.c
-index 0ca8b46..17e9062 100644
+index 0ca8b46..4dbb120 100644
 --- a/src/raop_streamer.c
 +++ b/src/raop_streamer.c
 @@ -23,6 +23,7 @@
@@ -290,15 +290,18 @@ index 0ca8b46..17e9062 100644
  	int latency;			// rtp hold depth in samples
  	int delay;              // http startup silence fill frames
  	uint32_t resent_frames;	// total recovered frames
-@@ -118,6 +120,7 @@ typedef struct raopst_s {
+@@ -118,6 +120,10 @@ typedef struct raopst_s {
  	bool silence, http_ready;
  	raopst_cb_t event_cb;
  	raop_http_cb_t http_cb;
 +	raop_pcm_output_t pcm;
++    bool pcm_clock_ready, pcm_aligned;
++    uint32_t pcm_clock_base;
++    uint64_t pcm_samples, pcm_wait_blocks, pcm_dropped_frames, pcm_realignments;
  	void *owner;
  	uint8_t *http_cache;
  	size_t http_count;
-@@ -135,6 +138,7 @@ static bool 	rtp_request_timing(raopst_t *ctx);
+@@ -135,6 +141,7 @@ static bool 	rtp_request_timing(raopst_t *ctx);
  static void*	rtp_thread_func(void *arg);
  
  static void*	http_thread_func(void *arg);
@@ -306,7 +309,7 @@ index 0ca8b46..17e9062 100644
  static bool 	handle_http(raopst_t *ctx, int sock);
  
  static int	  	seq_order(seq_t a, seq_t b);
-@@ -179,7 +183,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
+@@ -179,7 +186,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
  								void *owner,
  								raopst_cb_t event_cb, raop_http_cb_t http_cb,
  								unsigned short port_base, unsigned short port_range,
@@ -315,7 +318,7 @@ index 0ca8b46..17e9062 100644
  	char *arg, *p;
  	int fmtp[12];
  	bool rc = true;
-@@ -195,6 +199,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
+@@ -195,6 +202,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
  	
  	ctx->http_cache = malloc(CACHE_SIZE);
  	ctx->http_length = http_length;
@@ -323,7 +326,7 @@ index 0ca8b46..17e9062 100644
  	ctx->host = host;
  	ctx->peer = peer;
  	ctx->rtp_host.sin_family = AF_INET;
-@@ -208,6 +213,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
+@@ -208,6 +216,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
  	ctx->icy.enabled = metadata;
  	ctx->latency = atoi(latencies);
  	ctx->latency = (ctx->latency * 44100) / 1000;
@@ -331,7 +334,7 @@ index 0ca8b46..17e9062 100644
  	if (strstr(latencies, ":f")) ctx->http_fill = true;
  	ctx->event_cb = event_cb;
  	ctx->http_cb = http_cb;
-@@ -238,7 +244,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
+@@ -238,7 +247,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
  
  	ctx->frame_size = fmtp[1];
  	ctx->silence_frame = (char*) calloc(ctx->frame_size, 4);
@@ -340,7 +343,7 @@ index 0ca8b46..17e9062 100644
  		ctx->delay = atoi(p + 1);
  		ctx->delay = (ctx->delay * 44100) / (ctx->frame_size * 1000);
  	}
-@@ -280,7 +286,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
+@@ -280,7 +289,7 @@ raopst_resp_t raopst_init(struct in_addr host, struct in_addr peer, char *codec,
  	if (rc) {
  		ctx->running = true;
  		pthread_create(&ctx->rtp_thread, NULL, rtp_thread_func, (void *) ctx);
@@ -349,7 +352,15 @@ index 0ca8b46..17e9062 100644
  	} else {
  		raopst_end(ctx);
  		ctx = NULL;
-@@ -645,7 +651,21 @@ static void *rtp_thread_func(void *arg) {
+@@ -338,6 +347,7 @@ bool raopst_flush(raopst_t *ctx, unsigned short seqno, unsigned int rtptime, boo
+ 	pthread_mutex_lock(&ctx->ab_mutex);
+ 
+ 	ctx->first_seqno = seqno;
++    ctx->pcm_aligned = false;
+ 	bool flushed = true;
+ 
+ 	if (silence) {
+@@ -645,7 +655,21 @@ static void *rtp_thread_func(void *arg) {
  				ctx->timing.rtp_remote = (((uint64_t)ntohl(*(uint32_t*)(pktp + 8))) << 32) + ntohl(*(uint32_t*)(pktp + 12));
  
  				// re-align timestamp and expected local playback time
@@ -372,7 +383,7 @@ index 0ca8b46..17e9062 100644
  				ctx->synchro.rtp = rtp_now - ctx->latency;
  
  				// now we are synced on RTP frames
-@@ -703,7 +723,7 @@ static void *rtp_thread_func(void *arg) {
+@@ -703,7 +727,7 @@ static void *rtp_thread_func(void *arg) {
  				ctx->timing.local = reference;
  				ctx->timing.count++;
  
@@ -381,7 +392,7 @@ index 0ca8b46..17e9062 100644
  					delta = NTP2MS((int64_t) expected - (int64_t) ctx->timing.remote);
  					ctx->timing.gap_sum += delta;
  
-@@ -741,14 +761,17 @@ static void *rtp_thread_func(void *arg) {
+@@ -741,14 +765,17 @@ static void *rtp_thread_func(void *arg) {
  				}
  
  				// re-adjust the synchro time in case it could not have been done by first RTP because NTP was missing
@@ -400,7 +411,7 @@ index 0ca8b46..17e9062 100644
  				LOG_DEBUG("[%p]: Timing references local:%" PRIu64 ", remote: %" PRIx64 " (delta : %" PRId64 ", sum : %" PRId64 ", adjust : %" PRId64 ", gaps : % d)",
  						  ctx, ctx->timing.local, ctx->timing.remote, delta, ctx->timing.gap_sum, ctx->timing.gap_adjust, ctx->timing.gap_count);
  				break;
-@@ -823,6 +846,12 @@ static bool rtp_request_resend(raopst_t *ctx, seq_t first, seq_t last) {
+@@ -823,6 +850,12 @@ static bool rtp_request_resend(raopst_t *ctx, seq_t first, seq_t last) {
  
  /*---------------------------------------------------------------------------*/
  // get the next frame, when available. return 0 if underrun/stream reset.
@@ -413,30 +424,55 @@ index 0ca8b46..17e9062 100644
  static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
  	// no frame (even silence) when not playing and not synchronized
  	if (ctx->state != RTP_PLAY || ctx->synchro.status != (RTP_SYNC | NTP_SYNC)) return NULL;
-@@ -851,6 +880,22 @@ static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
+@@ -830,6 +863,7 @@ static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
+ 	// send silence if required to create enough buffering (want countdown to happen)
+ 	if ((ctx->silence_count && ctx->silence_count--) || ctx->pause)	{
+ 		*bytes = ctx->frame_size * 4;
++        if (ctx->pcm.open) ctx->pcm_aligned = false;
+ 		return (short*) ctx->silence_frame;
+ 	}
+ 
+@@ -851,6 +885,39 @@ static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
  		buf_fill = ctx->ab_write - ctx->ab_read + 1;
  	}
  
 +    if (ctx->pcm.open) {
-+        /* Slow setup or a discontinuity may leave expired audio queued. Skip
-+         * only complete, expired frames; retain all future presentation times. */
-+        unsigned int skipped = 0;
-+        while (buf_fill > 0) {
-+            abuf_t *f = &ctx->audio_buffer[BUFIDX(ctx->ab_read)];
-+            uint32_t end = frame_playtime(ctx, f->rtptime + ctx->frame_size) - ctx->pcm.lead_ms;
-+            if ((int32_t)(now - end) < 0) break;
-+            f->ready = false; ctx->ab_read++; buf_fill--; skipped++;
-+        }
-+        if (skipped > 4) LOG_INFO("[%p]: native skipped %u expired frames", ctx, skipped);
-+        if (buf_fill <= 0) return NULL;
++        /* A paced sink can return at the last complete UDP packet, several ms
++         * before the next PCM sample. Wall time here is NOT its output cursor.
++         * Account for every submitted sample, including startup/pause silence. */
++        uint32_t cursor = ctx->pcm_clock_ready
++            ? ctx->pcm_clock_base + ctx->pcm_samples * 1000 / 44100 : now;
++        if (buf_fill <= 0) {ctx->pcm_aligned = false;return NULL;}
 +        uint32_t due = frame_playtime(ctx, ctx->audio_buffer[BUFIDX(ctx->ab_read)].rtptime) - ctx->pcm.lead_ms;
-+        if ((int32_t)(now - due) < 0) return NULL;
++        int32_t error = due - cursor;
++        /* Once aligned, preserve contiguous PCM through sub-packet rounding
++         * and small NTP corrections. Re-anchor only at a real discontinuity.
++         * This is bounded partial sync, not long-term sample-rate resampling. */
++        if (ctx->pcm_aligned && (error > 20 || error < -20)) {
++            ctx->pcm_aligned = false;ctx->pcm_realignments++;
++            LOG_INFO("[%p]: native timing discontinuity %d ms", ctx, error);
++        }
++        if (!ctx->pcm_aligned) {
++            unsigned int skipped = 0;
++            while (buf_fill > 0) {
++                abuf_t *f = &ctx->audio_buffer[BUFIDX(ctx->ab_read)];
++                uint32_t end = frame_playtime(ctx, f->rtptime + ctx->frame_size) - ctx->pcm.lead_ms;
++                if ((int32_t)(cursor - end) < 0) break;
++                f->ready = false; ctx->ab_read++; buf_fill--; skipped++;
++            }
++            ctx->pcm_dropped_frames += skipped;
++            if (skipped) LOG_INFO("[%p]: native skipped %u expired frames", ctx, skipped);
++            if (buf_fill <= 0) return NULL;
++            due = frame_playtime(ctx, ctx->audio_buffer[BUFIDX(ctx->ab_read)].rtptime) - ctx->pcm.lead_ms;
++            if ((int32_t)(cursor - due) < 0) return NULL;
++            ctx->pcm_aligned = true;
++        }
 +    }
 +
  	abuf_t* curframe = ctx->audio_buffer + BUFIDX(ctx->ab_read);
  
  	// try to request resend missing packet in order, explore up to 64 frames
-@@ -872,11 +917,11 @@ static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
+@@ -872,11 +939,11 @@ static short *_buffer_get_frame(raopst_t *ctx, size_t *bytes) {
  	if (!buf_fill) curframe->rtptime = ctx->audio_buffer[BUFIDX(ctx->ab_read - 1)].rtptime + ctx->frame_size;
  
  	// watch out for 32 bits overflow
@@ -450,7 +486,7 @@ index 0ca8b46..17e9062 100644
  		LOG_SDEBUG("[%p]: waiting (fill:%hd, W:%hu R:%hu) now:%u, playtime:%u, wait:%d", ctx, buf_fill, ctx->ab_write, ctx->ab_read, now, playtime, playtime - now);
  		return NULL;
  	}
-@@ -933,6 +978,50 @@ int send_data(bool chunked, int sock, const void *data, int size, int flags) {
+@@ -933,6 +1000,63 @@ int send_data(bool chunked, int sock, const void *data, int size, int flags) {
  }
  
  /*---------------------------------------------------------------------------*/
@@ -477,6 +513,7 @@ index 0ca8b46..17e9062 100644
 +                copy[i * 2 + 1] = sample >> 8;
 +            }
 +        } else if (session) {
++            ctx->pcm_wait_blocks++;
 +            bytes = ctx->frame_size * 4;
 +            memset(copy, 0, bytes);
 +        }
@@ -484,6 +521,14 @@ index 0ca8b46..17e9062 100644
 +        if (can_open) {
 +            session = ctx->pcm.open(ctx->pcm.owner, &ctx->running);
 +            if (!session) { LOG_ERROR("[%p]: PCM output setup failed", ctx); break; }
++            /* Anchor at the first write; the sink starts its own paced clock
++             * there. Keep this cursor across FLUSH so silence also advances it. */
++            pthread_mutex_lock(&ctx->ab_mutex);
++            ctx->pcm_clock_base = gettime_ms();
++            ctx->pcm_samples = 0;
++            ctx->pcm_clock_ready = true;
++            ctx->pcm_aligned = false;
++            pthread_mutex_unlock(&ctx->ab_mutex);
 +            /* Re-evaluate timestamps after setup; never trim future audio. */
 +            continue;
 +        }
@@ -492,7 +537,11 @@ index 0ca8b46..17e9062 100644
 +            LOG_ERROR("[%p]: PCM output failed; closing session", ctx);
 +            break;
 +        }
++        ctx->pcm_samples += bytes / 4;
 +    }
++    LOG_INFO("[%p]: native PCM timing samples=%llu wait_blocks=%llu dropped_frames=%llu realignments=%llu", ctx,
++        (unsigned long long)ctx->pcm_samples, (unsigned long long)ctx->pcm_wait_blocks,
++        (unsigned long long)ctx->pcm_dropped_frames, (unsigned long long)ctx->pcm_realignments);
 +    if (session) ctx->pcm.close(session);
 +    free(copy);
 +    return NULL;
@@ -501,7 +550,7 @@ index 0ca8b46..17e9062 100644
  static void *http_thread_func(void *arg) {
  	int frame_count = 0;
  	raopst_t *ctx = (raopst_t*) arg;
-@@ -1017,19 +1106,11 @@ static void *http_thread_func(void *arg) {
+@@ -1017,19 +1141,11 @@ static void *http_thread_func(void *arg) {
  					char buffer[ICY_LEN_MAX];
  
  					if (ctx->icy.updated) {
