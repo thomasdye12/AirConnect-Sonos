@@ -4,7 +4,6 @@ Do not unlink lock files: a replacement inode could admit two owners. These
 advisory leases do not coordinate unrelated controllers or other hosts.
 """
 import fcntl
-import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -20,7 +19,7 @@ class DeviceLease:
 
     def __enter__(self):
         self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path = self.directory / (hashlib.sha256(self.identity.encode()).hexdigest() + '.lock')
+        path = self.directory / (self.identity.encode().hex() + '.lock')
         fd = os.open(str(path), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         deadline = time.monotonic() + self.timeout
         try:

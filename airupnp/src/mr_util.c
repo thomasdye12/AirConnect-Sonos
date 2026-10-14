@@ -56,7 +56,7 @@ struct sMR *GetMaster(struct sMR *Device, char **Name)
 	struct sService *Service = &Device->Service[TOPOLOGY_IDX];
 	bool done = false;
 
-	if (!*Service->ControlURL) return NULL;
+	if (Device->Native || !*Service->ControlURL) return NULL;
 
 	ActionNode = UpnpMakeAction("GetZoneGroupState", Service->Type, 0, NULL);
 
@@ -153,8 +153,13 @@ void FlushMRDevices(void) {
 		pthread_mutex_lock(&p->Mutex);
 		if (p->Running) {
 			// critical to stop the device otherwise libupnp might wait forever
-			if (p->RaopState == RAOP_PLAY) AVTStop(p);
-			raopsr_delete(p->Raop);
+			if (!p->Native && p->RaopState == RAOP_PLAY) AVTStop(p);
+			if (p->Native) {
+                p->Running = false;
+                pthread_mutex_unlock(&p->Mutex);
+                raopsr_delete(p->Raop);
+                pthread_mutex_lock(&p->Mutex);
+            } else raopsr_delete(p->Raop);
 			// device's mutex returns unlocked
 			DelMRDevice(p);
 		} else pthread_mutex_unlock(&p->Mutex);
@@ -164,6 +169,8 @@ void FlushMRDevices(void) {
 /*----------------------------------------------------------------------------*/
 void DelMRDevice(struct sMR *p) {
 	/* The RAOP server is already stopped by the caller. */
+	sonos_native_device_free(p->Native);
+	p->Native = NULL;
 	raopsr_metadata_free(&p->SourceMetadata);
 	// try to unsubscribe but missing players will not succeed and as a result
 	// terminating the libupnp takes a while ...

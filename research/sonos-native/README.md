@@ -1,3 +1,5 @@
+> **tds3 update:** the native sender is now wired into AirPlay PCM output through `airupnp/src/sonos_native.c` and the shipped libraop patch. See the [current setup instructions](../../README.md#native-udp-airplay-tds3) and [integration evidence](firmware-research/airplay-native-integration.json). The bounded research commands and historical limitations below remain useful for reproducing individual experiments.
+
 # Sonos transport research
 
 These are research tools alongside AirConnect-Sonos, not an installed AirPlay output backend. Start here instead of the chronological notes. Latest follow-up: [Bathroom music test](firmware-research/bathroom-music-test.json) confirmed clear music through an ending tone during 30 seconds, with the helper released near the start, despite paused transport status. Kitchen previously passed a short detached tone test. Earlier muted tests kept a detached endpoint alive for 120 seconds and exercised concurrent receivers with a retained coordinator. Fully independent setup remains unresolved. No virtual player needs to run for normal AirConnect playback.
@@ -116,4 +118,4 @@ Separate processes on the same host and user serialize setup through advisory de
 
 The [shared-helper test](firmware-research/configurable-helper-tests.json) ran overlapping muted 25- and 40-second streams with one configured helper. Setup was serialized, the helper was restored and released after each setup, and the shorter receiver stopped/restored while the longer sender continued. Both packet/timing checks and restoration passed. Sonos still reported paused, so the CLI's strict transport check returned nonzero; these muted results do not establish audible multi-stream continuity.
 
-This setting belongs to the experimental controller commands. The production AirConnect AirPlay audio path does not read it yet; automatic native UDP AirPlay sessions, long endurance, and audible concurrent streams still need integration and validation.
+The tds3 native AirPlay backend also reads this helper file when enabled in XML. The bounded `udp-test` commands remain separate diagnostics. Long endurance, audible concurrent streams and acoustic latency still need validation.

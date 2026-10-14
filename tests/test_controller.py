@@ -12,6 +12,47 @@ c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)
 
 class ControllerTests(unittest.TestCase):
+    def test_native_mode_cli_offset(self):
+        with patch.object(c, 'set_native_mode') as setter, patch('sys.stdout', new_callable=io.StringIO):
+            self.assertEqual(c.main(['native-mode', '--enabled', '1', '--sync-offset-ms', '500']),0)
+            self.assertEqual(setter.call_args[0][-1],500)
+            self.assertEqual(c.main(['native-mode', '--enabled', '1']),0)
+            self.assertIsNone(setter.call_args[0][-1])
+
+    def test_status_reports_disk_configuration_and_overrides(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / 'Config.xml'
+            config.write_text('<airupnp><common><native_udp>1</native_udp><native_muted>1</native_muted></common><device><udn>test</udn><native_udp>0</native_udp></device></airupnp>')
+            with patch.object(c.subprocess, 'call', return_value=0), patch('sys.stdout', new_callable=io.StringIO) as output:
+                self.assertEqual(c.main(['--config', str(config), 'status']), 0)
+                status=json.loads(output.getvalue())
+                self.assertEqual(status['configured_default_backend'], 'native UDP')
+                self.assertTrue(status['configured_native_muted'])
+                self.assertEqual(status['device_overrides'], [{'udn':'test','native_udp':'0'}])
+                self.assertIn('restart required', status['note'])
+
+    def test_native_mode_atomic_configuration_preserves_other_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / 'Config.xml'
+            helper = Path(directory) / 'helper.json'
+            config.write_text('<airupnp><common><codec>mp3:320</codec></common><device><udn>uuid:RINCON_TEST</udn><native_udp>0</native_udp></device></airupnp>')
+            original = config.read_bytes()
+            with self.assertRaises(OSError): c.set_native_mode(str(config), str(helper), True)
+            self.assertEqual(config.read_bytes(), original)
+            helper.write_text(json.dumps({'version': 1, 'helper': {'address': '192.0.2.20', 'uuid': 'RINCON_02000000000101400', 'name': 'Helper'}}))
+            c.set_native_mode(str(config), str(helper), True, True, 500)
+            root = c.ET.parse(config).getroot()
+            self.assertEqual(root.findtext('common/native_udp'), '1')
+            self.assertEqual(root.findtext('common/native_muted'), '1')
+            self.assertEqual(root.findtext('common/native_sync_offset_ms'), '500')
+            self.assertEqual(root.findtext('common/codec'), 'mp3:320')
+            self.assertEqual(root.findtext('device/native_udp'), '0')
+            with self.assertRaises(ValueError): c.set_native_mode(str(config), str(helper), True, sync_offset=9000)
+            helper.unlink()
+            c.set_native_mode(str(config), str(helper), False)
+            self.assertEqual(c.ET.parse(config).findtext('common/native_udp'), '0')
+            self.assertEqual(c.ET.parse(config).findtext('common/native_sync_offset_ms'), '500')
+
     def test_save_helper_uses_root_identity_and_atomic_validated_file(self):
         xml = b'<root xmlns="urn:schemas-upnp-org:device-1-0"><device><UDN>uuid:RINCON_02000000000101400</UDN><roomName>Helper</roomName><deviceList><device><UDN>uuid:WRONG_MR</UDN></device></deviceList></device></root>'
         with tempfile.TemporaryDirectory() as directory:

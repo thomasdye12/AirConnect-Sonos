@@ -4,7 +4,11 @@
   <sonos_api>http://sonos-api.local:5005/zones</sonos_api>
   <sonos_name_prefix></sonos_name_prefix>
   <sonos_name_suffix> (Sonos)</sonos_name_suffix>
+  <sonos_native_helper>/var/airplay_sonos/native-helper.json</sonos_native_helper>
   <common>
+    <native_udp>0</native_udp>
+    <native_sync_offset_ms>0</native_sync_offset_ms>
+    <native_muted>0</native_muted>
     <enabled>0</enabled>
     <codec>mp3:320</codec>
     <metadata>1</metadata>

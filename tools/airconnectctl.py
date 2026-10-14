@@ -65,6 +65,44 @@ def save_helper(path, address):
     return helper
 
 
+def set_native_mode(config, helper_path, enabled, muted=False, sync_offset=None):
+    if sync_offset is not None and not -1000 <= sync_offset <= 5000:
+        raise ValueError("Native sync offset must be -1000..5000 ms")
+    if enabled:
+        load_helper(helper_path)
+    tree = ET.parse(config)
+    root = tree.getroot()
+    if root.tag != 'airupnp':
+        raise ValueError('Expected an AirUPnP configuration')
+    common = root.find('common')
+    if common is None:
+        common = ET.SubElement(root, 'common')
+    for parent, name, value in ((root, 'sonos_native_helper', os.path.abspath(helper_path)),
+                                (common, 'native_udp', str(int(enabled))),
+                                (common, 'native_muted', str(int(muted)))):
+        node = parent.find(name)
+        if node is None:
+            node = ET.SubElement(parent, name)
+        node.text = value
+    if sync_offset is not None:
+        node = common.find('native_sync_offset_ms')
+        if node is None:
+            node = ET.SubElement(common, 'native_sync_offset_ms')
+        node.text = str(sync_offset)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=os.path.dirname(os.path.abspath(config)), delete=False) as stream:
+            temporary = stream.name
+            tree.write(stream, encoding='UTF-8', xml_declaration=True)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.chmod(temporary, os.stat(config).st_mode & 0o777)
+        os.replace(temporary, config)
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def load_json(stream):
     body = stream.read(LIMIT + 1)
     if len(body) > LIMIT:
@@ -117,6 +155,10 @@ def main(argv=None):
     helper = sub.add_parser('helper-set', help='Verify and save the helper for experimental native UDP setup')
     helper.add_argument('--address', required=True, help='IPv4 address of the chosen Sonos helper')
     sub.add_parser('helper-show', help='Show the configured native helper; no speaker changes')
+    mode = sub.add_parser('native-mode', help='Configure native AirPlay output; restart bridge to apply')
+    mode.add_argument('--enabled', type=int, choices=(0, 1), required=True)
+    mode.add_argument('--sync-offset-ms', type=int, choices=range(-1000, 5001), metavar='-1000..5000', help='Local A/V calibration; positive delays audio, omitted preserves existing value')
+    mode.add_argument('--muted', action='store_true', help='Keep native receivers muted for validation')
     clip = sub.add_parser('clip-test', help='Experimental bounded SILENT HTTP WAV test, not AirPlay')
     clip.add_argument('--receiver', required=True)
     clip.add_argument('--receiver-id', required=True)
@@ -144,7 +186,11 @@ def main(argv=None):
     if args.command in ('helper-set', 'helper-show'):
         selected = save_helper(helper_path, args.address) if args.command == 'helper-set' else load_helper(helper_path)
         print(json.dumps({'helper': selected, 'config': helper_path,
-                          'scope': 'Experimental UDP setup; production AirPlay output unchanged'}, indent=2))
+                          'scope': 'Native AirPlay helper; restart bridge after changes. native_udp selects output.'}, indent=2))
+        return 0
+    if args.command == 'native-mode':
+        set_native_mode(args.config, helper_path, bool(args.enabled), args.muted, args.sync_offset_ms)
+        print('Default native AirPlay output ' + ('enabled' if args.enabled else 'disabled') + '; restart the bridge to apply. Device overrides are preserved.')
         return 0
     if args.command == 'udp-test':
         if sys.version_info < (3, 8):
@@ -200,8 +246,12 @@ def main(argv=None):
     if args.command == 'status':
         code = subprocess.call(['systemctl', 'status', '--no-pager', 'airplay_sonos.service'])
         print(json.dumps({'config': args.config, 'room_api': api, 'room_cache': cache,
-                          'playback_backend': 'UPnP HTTP (production)',
-                          'native_udp_backend': 'research only; independent setup unresolved'}, indent=2))
+                          'configured_default_backend': 'native UDP' if root.findtext('common/native_udp', '0') == '1' else 'UPnP HTTP',
+                          'configured_native_sync_offset_ms': int(root.findtext('common/native_sync_offset_ms', '0')),
+                          'configured_native_muted': root.findtext('common/native_muted', '0') == '1',
+                          'helper_config': root.findtext('sonos_native_helper', ''),
+                          'device_overrides': [dict([('udn', d.findtext('udn', ''))] + [(key, d.findtext(key)) for key in ('native_udp', 'native_muted', 'native_sync_offset_ms') if d.find(key) is not None]) for d in root.findall('device') if any(d.find(key) is not None for key in ('native_udp', 'native_muted', 'native_sync_offset_ms'))],
+                          'note': 'Configuration on disk; restart required after changes.'}, indent=2))
         return code
     print(json.dumps(room_list(api, cache, root.findtext('sonos_name_prefix', ''),
                                root.findtext('sonos_name_suffix', ' (Sonos)')), indent=2))

@@ -1,3 +1,12 @@
+TDS3 INTEGRATION (2026-10-14): the AirPlay PCM output thread now feeds this
+sender without holding the RTP ingest mutex. airupnp/src/sonos_native.c owns
+helper setup, promotion, early helper restoration/release, volume and receiver
+cleanup. Same-user/host device leases serialize cooperating C/Python sessions.
+FLUSH sends silence until new input; TCP disconnect/TEARDOWN closes the sink.
+Two muted AirPlay streams passed on ARM, including independent disconnect and
+restoration. See ../firmware-research/airplay-native-integration.json. Existing
+historical warnings below describe earlier checkpoints, not the current wiring.
+
 LATEST MUSIC TEST: Bathroom rendered user-confirmed clear music through an
 ending tone in a 30-second test at volume 35, with helper release near the start.
 5,270 packets, 60 clock requests, zero late sends; both speakers restored.

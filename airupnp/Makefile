@@ -40,9 +40,9 @@ DEFINES 	+= -DNDEBUG -D_GNU_SOURCE -DUPNP_STATIC_LIB
 CFLAGS  	+= -Wall -fPIC -ggdb -O2 $(DEFINES) -fdata-sections -ffunction-sections
 LDFLAGS 	+= -lpthread -ldl -lm -L.
 
-vpath %.c $(TOOLS):$(SRC):$(COMMON)
+vpath %.c $(TOOLS):$(SRC):$(COMMON):$(BASE)/research/sonos-native/native
 
-INCLUDE = -I$(BASE)/aircast/libjansson/targets/$(HOST)/$(PLATFORM)/include -I$(OPENSSL)/include \
+INCLUDE = -I$(COMMON)/libraop/src -I$(BASE)/research/sonos-native/native -I$(BASE)/aircast/libjansson/targets/$(HOST)/$(PLATFORM)/include -I$(OPENSSL)/include \
 	  -I$(COMMON) \
 		  -I$(CODECS)/include/flac -I$(CODECS)/include/shine \
 		  -I$(TOOLS) \
@@ -53,7 +53,7 @@ INCLUDE = -I$(BASE)/aircast/libjansson/targets/$(HOST)/$(PLATFORM)/include -I$(O
 
 DEPS	= $(SRC)/airupnp.h $(LIBRARY) $(LIBRARY_STATIC)
 
-SOURCES = sonos_api.c avt_util.c airupnp.c mr_util.c config_upnp.c  \
+SOURCES = sonos_native.c sonos_sender.c sonos_packet.c sonos_api.c avt_util.c airupnp.c mr_util.c config_upnp.c  \
 	  cross_util.c cross_log.c cross_net.c cross_thread.c platform.c
 
 SOURCES_LIBS = cross_ssl.c

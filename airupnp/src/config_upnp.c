@@ -58,12 +58,16 @@ void SaveConfig(char *name, void *ref, bool full) {
 	XMLUpdateNode(doc, root, false, "log_limit", "%d", (int32_t) glLogLimit);
 	XMLUpdateNode(doc, root, false, "max_players", "%d", (int) glMaxDevices);
 	XMLUpdateNode(doc, root, false, "binding", glBinding);
+	XMLUpdateNode(doc, root, false, "sonos_native_helper", "%s", glNativeHelperConfig);
 	XMLUpdateNode(doc, root, false, "sonos_api", "%s", glSonosAPI);
 	XMLUpdateNode(doc, root, false, "sonos_cache", "%s", glSonosCache);
 	XMLUpdateNode(doc, root, false, "sonos_name_prefix", "%s", glSonosPrefix);
 	XMLUpdateNode(doc, root, false, "sonos_name_suffix", "%s", glSonosSuffix);
 	XMLUpdateNode(doc, root, false, "ports", "%hu:%hu", glPortBase, glPortRange);
 
+	XMLUpdateNode(doc, common, false, "native_sync_offset_ms", "%d", glMRConfig.NativeSyncOffset);
+	XMLUpdateNode(doc, common, false, "native_udp", "%d", glMRConfig.NativeUDP);
+	XMLUpdateNode(doc, common, false, "native_muted", "%d", glMRConfig.NativeMuted);
 	XMLUpdateNode(doc, common, false, "enabled", "%d", (int) glMRConfig.Enabled);
 	XMLUpdateNode(doc, common, false, "max_volume", "%d", glMRConfig.MaxVolume);
 	XMLUpdateNode(doc, common, false, "http_length", "%d", glMRConfig.HTTPLength);
@@ -131,6 +135,9 @@ void SaveConfig(char *name, void *ref, bool full) {
 static void LoadConfigItem(tMRConfig *Conf, char *name, char *val) {
 	if (!val) return;
 
+	if (!strcmp(name, "native_sync_offset_ms")) Conf->NativeSyncOffset = max(-1000, min(5000, atoi(val)));
+	if (!strcmp(name, "native_udp")) Conf->NativeUDP = atoi(val) != 0;
+	if (!strcmp(name, "native_muted")) Conf->NativeMuted = atoi(val) != 0;
 	if (!strcmp(name, "enabled")) Conf->Enabled = atoi(val);
 	if (!strcmp(name, "max_volume")) Conf->MaxVolume = atoi(val);
 	if (!strcmp(name, "http_length")) Conf->HTTPLength = atoi(val);
@@ -164,6 +171,7 @@ static void LoadGlobalItem(char *name, char *val) {
 	if (!strcmp(name, "log_limit")) glLogLimit = atol(val);
 	if (!strcmp(name, "max_players")) glMaxDevices = atol(val);
 	if (!strcmp(name, "binding")) strcpy(glBinding, val);
+	if (!strcmp(name, "sonos_native_helper")) snprintf(glNativeHelperConfig, sizeof(glNativeHelperConfig), "%s", val);
 	if (!strcmp(name, "sonos_api")) snprintf(glSonosAPI, sizeof(glSonosAPI), "%s", val);
 	if (!strcmp(name, "sonos_cache")) snprintf(glSonosCache, sizeof(glSonosCache), "%s", val);
 	if (!strcmp(name, "sonos_name_prefix")) snprintf(glSonosPrefix, sizeof(glSonosPrefix), "%s", val);

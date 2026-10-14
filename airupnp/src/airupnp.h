@@ -20,8 +20,9 @@
 #include "raop_server.h"
 #include "cross_util.h"
 #include "metadata.h"
+#include "sonos_native.h"
 
-#define VERSION "v1.12.4-tds2 ("__DATE__" @ "__TIME__")"
+#define VERSION "v1.12.4-tds3 ("__DATE__" @ "__TIME__")"
 
 /*----------------------------------------------------------------------------*/
 /* typedefs */
@@ -64,6 +65,8 @@ typedef struct sMRConfig
 	uint8_t		mac[6];
 	char		ArtWork[4*STR_LEN];
 	char		StreamType[STR_LEN];
+	bool NativeUDP, NativeMuted;
+    int NativeSyncOffset;
 } tMRConfig;
 
 struct sMR {
@@ -76,6 +79,8 @@ struct sMR {
 	enum eMRstate 	State;
 	bool			ExpectStop;
 	struct raopsr_s *Raop;
+	struct sonos_native_device *Native;
+	raop_pcm_output_t PCM;
 	metadata_t		MetaData;
 	raopsr_metadata_t SourceMetadata;
 	raopsr_event_t	RaopState;

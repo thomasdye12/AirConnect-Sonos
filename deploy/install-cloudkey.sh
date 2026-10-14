@@ -7,7 +7,7 @@ build=${1:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}
 [ -x "$build/bin/airupnp-linux-arm" ]
 [ -f "$build/tools/airconnectctl.py" ]
 app=/var/airplay_sonos
-backup=/srv/airconnect-backups/$(date -u +%Y%m%dT%H%M%SZ)-before-tds2
+backup=/srv/airconnect-backups/$(date -u +%Y%m%dT%H%M%SZ)-before-upgrade
 mkdir -p "$backup"
 cp -p "$app/airupnp-linux-arm" "$backup/airupnp-linux-arm"
 cp -p "$app/Config.xml" "$backup/Config.xml"

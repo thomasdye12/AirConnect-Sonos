@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-14",
+  "version": "v1.12.4-tds3",
+  "path": "Synthetic AirPlay RTSP + ALAC/RTP -> decoded PCM -> integrated C Sonos UDP backend",
+  "platform": "ARMv7 CloudKey, GCC 4.9",
+  "muted": true,
+  "acoustic_playback_verified": false,
+  "iphone_listening_verified": true,
+  "durations_requested_seconds": [
+    26,
+    55
+  ],
+  "pause_duration_seconds": 2,
+  "flush_resume_both": true,
+  "input_tones_hz": [
+    440,
+    660
+  ],
+  "shorter_session_closed_without_teardown": true,
+  "longer_session_continued_after_shorter_restored_seconds": 31,
+  "helper_setup_serialized": true,
+  "helper_restored_and_released_for_both": true,
+  "receiver_restoration_verified_for_both": true,
+  "sender_stats": [
+    {
+      "packets": 4860,
+      "clocks": 55,
+      "late": 7,
+      "pcm_frames": 1220032,
+      "signal_frames": 1117446
+    },
+    {
+      "packets": 9665,
+      "clocks": 103,
+      "late": 15,
+      "pcm_frames": 2425984,
+      "signal_frames": 2320392
+    }
+  ],
+  "native_test_status": "Sender/control/restoration passed; no acoustic inference from counters. Late sends exceed a 6 ms deadline tolerance and are not measured dropouts.",
+  "private_evidence_sha256": "8821896e0dc5b76409e403971ae88408cfd62b900210c8af82689e0a8c85054d",
+  "validation": [
+    "PCM C test: byte order, callbacks outside ingest lock, FLUSH/resume, write failure, exactly-once close",
+    "C control against local simulated speakers: XML/empty-value round trips, restoration, early helper release, promotion failure cleanup, busy helper refusal",
+    "45 native research Python tests",
+    "14 controller Python tests",
+    "Existing metadata/API C tests, RTSP artwork integration, cache HTTP regression",
+    "Shipped libraop patch reapplied to pinned source and compared byte for byte",
+    "Presentation timing regression on macOS ARM64 and Linux ARMv7: future frames retained, expired frames skipped, RTP wrap, PCM callbacks, FLUSH and close"
+  ],
+  "deployment": {
+    "installed": true,
+    "native_standalone_rooms": 15,
+    "helper_reserved": true,
+    "existing_grouped_or_active_rooms_keep_http": 3,
+    "rollback_backup_created": true,
+    "binary_sha256": "8c3d8e2b2f4fa31643a16aeb21c3bc020ccc270e13567d2d31cf9d74982efba3"
+  },
+  "limitations": [
+    "No independent helper-free bootstrap.",
+    "Native receivers/helper must initially be stopped and standalone.",
+    "No native track/artwork metadata update.",
+    "No acoustic latency measurement or long endurance proof.",
+    "No automatic recovery after a failed output; reconnect to retry.",
+    "Native enabled-room changes require restarting the service."
+  ],
+  "iphone_listening": {
+    "room": "Kitchen",
+    "user_report": "Kitchen: clear for at least 30 seconds",
+    "duration_is_listener_report": true,
+    "native_setup_and_helper_release_seen_in_service_log": true,
+    "audible_concurrent_iphone_streams_verified": false,
+    "initial_av_sync_report": "Audio ahead of YouTube video by approximately three seconds (listener estimate)."
+  },
+  "timing_correction": {
+    "installed": true,
+    "repeat_listener_verification": "Improved but approximately 500 ms early; about two seconds of audio after pause.",
+    "uses_source_sync_latency_plus_record_receiver_latency": true,
+    "native_sender_lead_ms": 75,
+    "future_audio_retained_during_setup": true,
+    "only_expired_complete_frames_skipped": true,
+    "http_hold_depth_and_drift_adjustments_bypassed": true,
+    "muted_live_test": {
+      "platform": "macOS ARM64",
+      "source_seconds": 12,
+      "flush_after_seconds": 5,
+      "pause_seconds": 2,
+      "closed_without_teardown": true,
+      "source_latency_samples": 88200,
+      "receiver_latency_samples": 22050,
+      "scheduled_total_ms": 2500,
+      "observed_submit_lead_ms_range": [
+        68,
+        75
+      ],
+      "packets": 2803,
+      "clocks": 32,
+      "late": 1,
+      "pcm_frames": 703648,
+      "signal_frames": 372597,
+      "helper_restored": true,
+      "receiver_restored": true,
+      "private_log_sha256": "09dc641496f7e4ef4dfd32460d355e5e6d8c5b6683f18d026328459b9babdb8d"
+    },
+    "iphone_protocol_observation": {
+      "source_latency_samples": 77175,
+      "receiver_latency_samples": 22050,
+      "scheduled_total_ms": 2250,
+      "observed_submit_lead_ms_range": [
+        69,
+        74
+      ],
+      "acoustic_alignment_proven": false,
+      "teardown_to_sender_close_ms": [
+        25,
+        33
+      ]
+    },
+    "user_report": "It\u2019s about half a second ahead normally and it runs on for about 2 seconds",
+    "local_calibration": {
+      "room": "Kitchen",
+      "offset_ms": 500,
+      "installed": true,
+      "repeat_listener_verification": "pending"
+    },
+    "pause_tail": {
+      "listener_estimate_seconds": 2,
+      "resolved": false,
+      "captured_control_methods": [
+        "TEARDOWN"
+      ],
+      "tap_time_not_measured": true,
+      "flush_regression_clears_queued_audio": true
+    }
+  }
+}

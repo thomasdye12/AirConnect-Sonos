@@ -248,7 +248,7 @@ static void *MRThread(void *args) {
 		should not request any status update if we are stopped, off or waiting
 		for an action to be performed or slave
 		*/
-		if (p->Master || (p->RaopState != RAOP_PLAY && p->State == STOPPED) ||
+		if (p->Native || p->Master || (p->RaopState != RAOP_PLAY && p->State == STOPPED) ||
 			p->ErrorCount < 0 || p->ErrorCount > MAX_ACTION_ERRORS || p->WaitCookie) goto sleep;
 
 		// do polling as event is broken in many uPNP devices (not synchronously)
@@ -293,14 +293,14 @@ void HandleRAOP(void *owner, raopsr_event_t event, ...) {
 		case RAOP_STOP:
 			// this is TEARDOWN, so far there is always a FLUSH before
 			LOG_INFO("[%p]: Stop", Device);
-			if (Device->RaopState == RAOP_PLAY) {
+			if (!Device->Native && Device->RaopState == RAOP_PLAY) {
 				AVTStop(Device);
 				Device->ExpectStop = true;
 			}
 			Device->RaopState = event;
 			break;
 		case RAOP_FLUSH:
-			if (Device->Config.Flush) {
+			if (!Device->Native && Device->Config.Flush) {
 				LOG_INFO("[%p]: Flush", Device);
 				AVTStop(Device);
 				Device->ExpectStop = true;
@@ -308,6 +308,7 @@ void HandleRAOP(void *owner, raopsr_event_t event, ...) {
             }
 			break;
 		case RAOP_PLAY: {
+			if (Device->Native) { Device->RaopState = event; break; }
 			if (Device->RaopState != RAOP_PLAY) {
 				uint16_t port = va_arg(args, uint32_t);
 				char* uri, * mp3radio = "";
@@ -351,6 +352,10 @@ void HandleRAOP(void *owner, raopsr_event_t event, ...) {
 		case RAOP_VOLUME: {
 			// Volume sent by raop is normalized 0..1
 			double RaopVolume = va_arg(args, double);
+			if (Device->Native) {
+				sonos_native_volume(Device->Native, RaopVolume * Device->Config.MaxVolume + 0.5);
+				break;
+			}
 			int GroupVolume, i;
 			uint32_t now = gettime_ms();
 
@@ -727,7 +732,12 @@ static void *UpdateThread(void *args) {
 						if (Device->Leaving || UpnpDownloadXmlDoc(Device->DescDocURL, &DescDoc) != UPNP_E_SUCCESS) {
 							pthread_mutex_lock(&Device->Mutex);
 							LOG_INFO("[%p]: removing unresponsive player (%s)", Device, Device->Config.Name);
-							raopsr_delete(Device->Raop);
+                            if (Device->Native) {
+                                Device->Running = false;
+                                pthread_mutex_unlock(&Device->Mutex);
+                                raopsr_delete(Device->Raop);
+                                pthread_mutex_lock(&Device->Mutex);
+                            } else raopsr_delete(Device->Raop);
 							// device's mutex returns unlocked
 							DelMRDevice(Device);
 						} else {
@@ -806,12 +816,12 @@ static void *UpdateThread(void *args) {
 							LOG_INFO("[%p]: Sonos %s is now master", Device, Device->Config.Name);
 							pthread_mutex_lock(&Device->Mutex);
 							Device->Master = NULL;
-							Device->Raop = raopsr_create(glHost, glmDNSServer, Device->Config.Name,
+							Device->Raop = raopsr_create_pcm(glHost, glmDNSServer, Device->Config.Name,
 								   "airupnp", Device->Config.mac, Device->Config.Codec,
 								   Device->Config.Metadata, Device->Config.Drift, Device->Config.Flush,
 								   Device->Config.Latency, Device,
 								   HandleRAOP, HandleHTTP, glPortBase, glPortRange,
-								   Device->Config.HTTPLength ? Device->Config.HTTPLength : HTTP_FIXED_LENGTH);
+								   Device->Config.HTTPLength ? Device->Config.HTTPLength : HTTP_FIXED_LENGTH, &Device->PCM);
 							pthread_mutex_unlock(&Device->Mutex);
 						} else if (Master && (!Device->Master || Device->Master == Device)) {
 							pthread_mutex_lock(&Device->Mutex);
@@ -862,12 +872,12 @@ static void *UpdateThread(void *args) {
 
 				if (AddMRDevice(Device, UDN, DescDoc, Update->Data) && !glDiscovery) {
 					// create a new AirPlay
-					Device->Raop = raopsr_create(glHost, glmDNSServer, Device->Config.Name,
+					Device->Raop = raopsr_create_pcm(glHost, glmDNSServer, Device->Config.Name,
 									   "airupnp", Device->Config.mac, Device->Config.Codec,
 									   Device->Config.Metadata, Device->Config.Drift, Device->Config.Flush,
 									   Device->Config.Latency, Device,
 									   HandleRAOP, HandleHTTP, glPortBase, glPortRange,
-									   Device->Config.HTTPLength ? Device->Config.HTTPLength : HTTP_FIXED_LENGTH);
+									   Device->Config.HTTPLength ? Device->Config.HTTPLength : HTTP_FIXED_LENGTH, &Device->PCM);
 					if (!Device->Raop) {
 						LOG_ERROR("[%p]: cannot create RAOP instance (%s)", Device, Device->Config.Name);
 						DelMRDevice(Device);
@@ -949,6 +959,8 @@ static bool AddMRDevice(struct sMR *Device, char *UDN, IXML_Document *DescDoc, c
 
 	if (*glSonosAPI) Device->Config.Enabled = sonos_api_name(UDN, Device->Config.Name, sizeof(Device->Config.Name));
 	if (!Device->Config.Enabled) return false;
+	/* Reserve the chosen helper when native output is enabled for this device. */
+	if ((glMRConfig.NativeUDP || Device->Config.NativeUDP) && sonos_native_is_helper(UDN)) return false;
 
 	// Read key elements from description document (NB: glMRConfig is fully initialized, including strings)
 	friendlyName = XMLGetFirstDocumentItem(DescDoc, "friendlyName", true);
@@ -1004,7 +1016,19 @@ static bool AddMRDevice(struct sMR *Device, char *UDN, IXML_Document *DescDoc, c
 		NFREE(ServiceURL);
 	}
 
-	Device->Master = GetMaster(Device, &friendlyName);
+	Device->Native = NULL;
+    memset(&Device->PCM, 0, sizeof(Device->PCM));
+    if (Device->Config.NativeUDP && *Device->Service[TOPOLOGY_IDX].ControlURL) {
+        Device->Native = sonos_native_device_new(inet_ntoa(glHost), location, UDN, Device->Config.NativeMuted);
+        if (!Device->Native) {
+            LOG_ERROR("native helper/config invalid for %s; refusing HTTP fallback", Device->Config.Name);
+            NFREE(friendlyName);
+            return false;
+        }
+        Device->PCM = sonos_native_output(Device->Native);
+        Device->PCM.sync_offset_ms = Device->Config.NativeSyncOffset;
+    }
+    Device->Master = GetMaster(Device, &friendlyName);
 	Device->Volume = CtrlGetVolume(Device);
 
 	// set remaining items now that we are sure
@@ -1145,6 +1169,10 @@ static bool Start(bool cold) {
 	}
 
 	if (*glSonosAPI && !sonos_api_fetch()) goto Error;
+	if (sonos_native_load_helper() && glMRConfig.NativeUDP) {
+		LOG_ERROR("native helper configuration invalid: %s", glNativeHelperConfig);
+		goto Error;
+	}
 	UpnpSetMaxContentLength(60000);
 	glPort = UpnpGetServerPort();
 
@@ -1258,7 +1286,7 @@ static void sighandler(int signum) {
 	if (!glGracefullShutdown) {
 		for (int i = 0; i < glMaxDevices; i++) {
 			struct sMR *p = &glMRDevices[i];
-			if (p->Running && p->State == PLAYING) AVTStop(p);
+			if (p->Running && !p->Native && p->State == PLAYING) AVTStop(p);
 		}
 		LOG_INFO("forced exit", NULL);
 		exit(0);
