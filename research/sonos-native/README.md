@@ -60,9 +60,9 @@ Python 3.8+ and the built native library are required. Both devices must initial
 python3 group_receiver_probe.py --receiver SPEAKER_IP --receiver-id SPEAKER_UUID --coordinator HELPER_IP --coordinator-id HELPER_UUID --seconds 120 --output PRIVATE_RESULTS.json
 ```
 
-`--handoff-to-synthetic --release-coordinator --reset-helper-group` investigates the orphaned-group failure; it is expected to fail the longer test. These flags do not enroll a virtual Sonos device. Do not run multiple probe processes against a shared helper without coordinating their setup and restoration; this standalone harness is not a session manager.
+`--handoff-to-synthetic --release-coordinator --reset-helper-group` investigates the orphaned-group failure; it is expected to fail the longer test. These flags do not enroll a virtual Sonos device. This probe now holds same-host device leases from snapshot through restoration. Detached mode can release the helper early for another probe; other research tools do not participate in these leases and must not overlap these sessions.
 
-`--promote-receiver --promotion-mode detach --seconds 120` tests promotion of an active receiver to its own group and removal of the helper. UDP/timing persisted for 120 seconds, but Sonos reported `PAUSED_PLAYBACK`: the command intentionally exits nonzero because the playback check fails. Sender progress is recorded separately from playback success. No audible result is claimed. Initial setup still needs the helper. Mode `retain` keeps the inherited group; mode `resume` additionally requests Play, which ended the native stream in the observed test. Kitchen's detach attempt returned 800 during helper cleanup, so this sequence is not portable or ready to deploy.
+`--promote-receiver --promotion-mode detach --seconds 120` tests promotion of an active receiver to its own group and removal of the helper. UDP/timing persisted for 120 seconds, but Sonos reported `PAUSED_PLAYBACK`: the command intentionally exits nonzero because the playback check fails. Sender progress is recorded separately from playback success. That 120-second run was muted. Subsequent short Kitchen tone and Bathroom music tests were confirmed by the listener. Initial setup still needs the helper. Mode `retain` keeps the inherited group; mode `resume` additionally requests Play, which ended the native stream in the observed test. An earlier Kitchen attempt returned 800 during redundant helper cleanup; the probe now checks both topology views and waits briefly for agreement before deciding whether removal is needed. This remains an experimental sequence.
 
 For the shared-coordinator concurrency control, one process must own all three devices:
 
@@ -91,8 +91,29 @@ The new nonzero-PCM detached test lasted 120 seconds, with 21,083 packets and 13
 
 The probe records sender checkpoints before promotion, after promotion, after helper release, and at completion. Its summary separates reference-interval and detached-interval packet, clock and late-send counts. These measure sender activity, not rendered audio or acoustic latency.
 
-Kitchen follow-up: promotion can leave both devices standalone automatically. The probe now reads both speakers' topology views and skips redundant `RemoveMember`/helper reset only if both agree that both devices are standalone. It does not ignore an arbitrary cleanup error. A 12-second muted check and a 25-second audible run at volume 35 completed with no runtime or restoration errors; the latter sent 4,392 packets with 50 timing requests and zero late sends. The user confirmed a clear tone for the full test, including about 16 seconds after helper release. Its transport state still reported paused, so the automated transport check remains separate from listening confirmation. This establishes a short detached tone result; setup still needs the helper. Music, longer audible endurance, independent bootstrap and acoustic latency remain unverified. See [Kitchen test evidence](firmware-research/kitchen-listening-test.json).
+Kitchen follow-up: promotion can leave both devices standalone automatically. The probe now reads both speakers' topology views and skips redundant `RemoveMember`/helper reset only if both agree that both devices are standalone. It does not ignore an arbitrary cleanup error. A 12-second muted check and a 25-second audible run at volume 35 completed with no runtime or restoration errors; the latter sent 4,392 packets with 50 timing requests and zero late sends. The user confirmed a clear tone for the full test, including about 16 seconds after helper release. Its transport state still reported paused, so the automated transport check remains separate from listening confirmation. This establishes a short detached tone result; setup still needs the helper. The later Bathroom test confirmed short music playback. Longer audible endurance, independent bootstrap and acoustic latency remain unverified. See [Kitchen test evidence](firmware-research/kitchen-listening-test.json).
 
 ### Offline source-state inspection
 
 `python3 research/sonos-native/source_state.py PRIVATE_STATE.txt` decodes a canonical 164-character `CurrentSourceState` value without network access. Keep the trailing descriptor spaces in the input. The decoder labels unresolved fields by their firmware object offsets and never declares a playable source. Its fixtures are synthetic; no real decrypted handoff state has been validated. The [layout trace](firmware-research/source-state-layout.txt) also shows that the alternate handoff action can continue after state parsing fails, so an accepted action alone is insufficient evidence of source activation.
+
+
+### Configure one shared setup helper
+
+Select an idle standalone Sonos device once, then reuse it for detached tests on different receivers. Run these commands from the repository root:
+
+```sh
+python3 tools/airconnectctl.py --helper-config ./native-helper.json helper-set --address HELPER_IP
+python3 tools/airconnectctl.py --helper-config ./native-helper.json helper-show
+python3 tools/airconnectctl.py --helper-config ./native-helper.json udp-test --receiver SPEAKER_IP --receiver-id SPEAKER_UUID --mode detach --signal tone --seconds 30 --promotion-delay 3 --output PRIVATE_RESULTS.json
+```
+
+`helper-set` reads the device's root description and saves its address, stable Sonos UUID and room name atomically. It does not change the speaker. The default file is `native-helper.json` beside `--config`; use an explicit writable path on a test host. Keep this household-specific file private. If its IP changes, run `helper-set` again. An explicit `--coordinator` and `--coordinator-id` pair overrides the saved choice for one test.
+
+Each test verifies address/UUID agreement and refuses a playing or grouped receiver/helper before changing either. The selected helper cannot also be that session's receiver. With `--mode detach`, it is muted during setup, restored to its original source, stopped state, volume and mute, and released only after restoration and both topology views confirm separation. The receiver stays owned until its own final restoration. A completed or failed stream does not touch a helper already released to another session.
+
+Separate processes on the same host and user serialize setup through advisory device locks. `--lock-timeout` bounds the wait (15 seconds by default, maximum 60). This is a bounded wait, not a guaranteed FIFO queue. Ordinary mode keeps the helper for the whole test; use detached mode for reuse during playback. Locks do not coordinate other hosts, ordinary Sonos controllers, or older research probes. Keep the helper idle and avoid external grouping during tests.
+
+The [shared-helper test](firmware-research/configurable-helper-tests.json) ran overlapping muted 25- and 40-second streams with one configured helper. Setup was serialized, the helper was restored and released after each setup, and the shorter receiver stopped/restored while the longer sender continued. Both packet/timing checks and restoration passed. Sonos still reported paused, so the CLI's strict transport check returned nonzero; these muted results do not establish audible multi-stream continuity.
+
+This setting belongs to the experimental controller commands. The production AirConnect AirPlay audio path does not read it yet; automatic native UDP AirPlay sessions, long endurance, and audible concurrent streams still need integration and validation.

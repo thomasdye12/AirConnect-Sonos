@@ -2,14 +2,67 @@
 """Local bridge management. Python 3.4+; experimental transport tests need Python 3.8+."""
 import argparse
 import json
+import ipaddress
 import os
+import re
 import subprocess
 import sys
 import time
+import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
 
 LIMIT = 1024 * 1024
+
+
+def validate_helper(data):
+    if not isinstance(data, dict) or data.get('version') != 1:
+        raise ValueError('Unsupported helper configuration')
+    helper = data.get('helper', {})
+    if not isinstance(helper, dict) or not re.fullmatch(r'RINCON_[0-9A-F]{17}', helper.get('uuid', '')):
+        raise ValueError('Invalid helper device ID')
+    ipaddress.IPv4Address(helper.get('address', ''))
+    if not isinstance(helper.get('name'), str) or not helper['name'].strip():
+        raise ValueError('Invalid helper name')
+    return helper
+
+
+def load_helper(path):
+    with open(path, 'rb') as stream:
+        data = load_json(stream)
+    return validate_helper(data)
+
+
+def save_helper(path, address):
+    address = str(ipaddress.IPv4Address(address))
+    with urllib.request.urlopen('http://' + address + ':1400/xml/device_description.xml', timeout=5) as response:
+        raw = response.read(LIMIT + 1)
+    if len(raw) > LIMIT:
+        raise ValueError('Helper description too large')
+    root = ET.fromstring(raw)
+    device = next((e for e in root if e.tag.split('}')[-1] == 'device'), None)
+    if device is None:
+        raise ValueError('Missing helper device description')
+    fields = {e.tag.split('}')[-1]: e.text or '' for e in device}
+    uid = fields.get('UDN', '')
+    if not uid.startswith('uuid:'):
+        raise ValueError('Invalid helper identity')
+    data = {'version': 1, 'helper': {'address': address, 'uuid': uid[5:], 'name': fields.get('roomName', '')}}
+    helper = validate_helper(data)
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, exist_ok=True)
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode='w', dir=directory, prefix='.helper-', delete=False) as stream:
+            temporary = stream.name
+            json.dump(data, stream, indent=2)
+            stream.write('\n')
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary and os.path.exists(temporary): os.unlink(temporary)
+    return helper
 
 
 def load_json(stream):
@@ -56,10 +109,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', default='/var/airplay_sonos/Config.xml')
     parser.add_argument('--api', help='Override /zones URL for rooms command')
+    parser.add_argument('--helper-config', help='Native helper JSON; defaults beside --config as native-helper.json')
     sub = parser.add_subparsers(dest='command')
     sub.add_parser('status', help='Local systemd status and configuration (read only)')
     sub.add_parser('rooms', help='Validated API coordinator names, with cache fallback')
     sub.add_parser('restart', help='Restart the local bridge and refresh its startup room list')
+    helper = sub.add_parser('helper-set', help='Verify and save the helper for experimental native UDP setup')
+    helper.add_argument('--address', required=True, help='IPv4 address of the chosen Sonos helper')
+    sub.add_parser('helper-show', help='Show the configured native helper; no speaker changes')
     clip = sub.add_parser('clip-test', help='Experimental bounded SILENT HTTP WAV test, not AirPlay')
     clip.add_argument('--receiver', required=True)
     clip.add_argument('--receiver-id', required=True)
@@ -67,8 +124,11 @@ def main(argv=None):
     clip.add_argument('--seconds', type=int, choices=range(1, 61), default=12, metavar='1..60')
     clip.add_argument('--streaming', action='store_true')
     udp = sub.add_parser('udp-test', help='Experimental bounded UDP test with a stopped helper; muted by default')
-    for name in ('receiver', 'receiver-id', 'coordinator', 'coordinator-id', 'output'):
+    for name in ('receiver', 'receiver-id', 'output'):
         udp.add_argument('--' + name, required=True)
+    udp.add_argument('--coordinator', help='Override saved helper address; requires --coordinator-id')
+    udp.add_argument('--coordinator-id', help='Override saved helper UUID; requires --coordinator')
+    udp.add_argument('--lock-timeout', type=float, default=15, help='Maximum wait for receiver/helper ownership in seconds')
     udp.add_argument('--mode', choices=('ordinary', 'detach'), default='ordinary')
     udp.add_argument('--seconds', type=int, choices=range(1, 121), default=20, metavar='1..120')
     udp.add_argument('--signal', choices=('silence', 'tone'), default='silence')
@@ -77,9 +137,15 @@ def main(argv=None):
     udp.add_argument('--test-volume', type=int, choices=range(36), default=15, metavar='0..35')
     udp.add_argument('--promotion-delay', type=int, choices=range(3, 31), default=8, metavar='3..30')
     args = parser.parse_args(argv)
+    helper_path = args.helper_config or os.path.join(os.path.dirname(os.path.abspath(args.config)), 'native-helper.json')
     if not args.command:
         parser.print_help()
         return 2
+    if args.command in ('helper-set', 'helper-show'):
+        selected = save_helper(helper_path, args.address) if args.command == 'helper-set' else load_helper(helper_path)
+        print(json.dumps({'helper': selected, 'config': helper_path,
+                          'scope': 'Experimental UDP setup; production AirPlay output unchanged'}, indent=2))
+        return 0
     if args.command == 'udp-test':
         if sys.version_info < (3, 8):
             raise RuntimeError('UDP tests need Python 3.8+ on your test host')
@@ -89,6 +155,13 @@ def main(argv=None):
             raise ValueError('Audible tests require --signal tone or --wav and at most 30 seconds')
         if args.mode == 'detach' and args.seconds < args.promotion_delay + 2:
             raise ValueError('Detached test needs at least two seconds after promotion')
+        if not 0 <= args.lock_timeout <= 60:
+            raise ValueError('Lock timeout must be 0..60 seconds')
+        if bool(args.coordinator) != bool(args.coordinator_id):
+            raise ValueError('Specify both helper override address and device ID')
+        if not args.coordinator:
+            selected = load_helper(helper_path)
+            args.coordinator, args.coordinator_id = selected['address'], selected['uuid']
         directory = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                                  'research', 'sonos-native')
         probe = os.path.join(directory, 'group_receiver_probe.py')
@@ -98,7 +171,7 @@ def main(argv=None):
             raise RuntimeError('Use the full Git checkout and first run: make -C research/sonos-native/native')
         command = [sys.executable, probe]
         for name in ('receiver', 'receiver_id', 'coordinator', 'coordinator_id', 'output',
-                     'seconds', 'signal', 'test_volume', 'promotion_delay'):
+                     'seconds', 'signal', 'test_volume', 'promotion_delay', 'lock_timeout'):
             command.extend(['--' + name.replace('_', '-'), str(getattr(args, name))])
         if args.mode == 'detach':
             command.extend(['--promote-receiver', '--promotion-mode', 'detach'])

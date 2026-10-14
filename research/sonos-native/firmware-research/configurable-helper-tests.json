@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-14",
+  "test": "Two detached muted receivers using one configured helper",
+  "helper_configured_by_device_description": true,
+  "muted": true,
+  "signal": "tone",
+  "production_bridge_modified": false,
+  "acoustic_playback_verified": false,
+  "automatic_airplay_udp_integration": false,
+  "tests_passed": {
+    "native_research": 45,
+    "controller": 11
+  },
+  "setup_serialized": true,
+  "second_setup_after_first_release_seconds": 0.058,
+  "observed_longer_sender_after_shorter_process_exit": {
+    "packets": 3495,
+    "clock_requests": 39,
+    "observed_interval_seconds": 19.892
+  },
+  "receivers": [
+    {
+      "duration_seconds": 25,
+      "stats": {
+        "packets": 4392,
+        "clock_requests": 50,
+        "late_packets": 0
+      },
+      "state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": false,
+      "helper_lease_released_at_seconds": 4.9637,
+      "helper_restored_early": true,
+      "helper_calls_after_release": 0,
+      "all_restored": true,
+      "runtime_error_present": false,
+      "restore_error_count": 0,
+      "detached_progress": {
+        "seconds": 21.0309,
+        "packets": 3695,
+        "clock_requests": 42,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "private_evidence_sha256": "c66dd282ef511f3a8800e30f61a34b9687a03e1e2b9b1d63a5398d882782a5a9"
+    },
+    {
+      "duration_seconds": 40,
+      "stats": {
+        "packets": 7027,
+        "clock_requests": 80,
+        "late_packets": 0
+      },
+      "state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": false,
+      "helper_lease_released_at_seconds": 5.3952,
+      "helper_restored_early": true,
+      "helper_calls_after_release": 0,
+      "all_restored": true,
+      "runtime_error_present": false,
+      "restore_error_count": 0,
+      "detached_progress": {
+        "seconds": 35.6096,
+        "packets": 6256,
+        "clock_requests": 70,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "private_evidence_sha256": "04261a98c707c14a31dd7e8ed7a4d7491fcaf85b65cf004a44c098356d3226da"
+    }
+  ],
+  "limitations": [
+    "Muted test verifies sender/timing activity, not acoustic continuity.",
+    "Strict transport check intentionally returns nonzero for PAUSED_PLAYBACK.",
+    "Device leases coordinate only participating processes on the same host and user.",
+    "Both devices must be stopped and standalone at setup; helper cannot also be that session receiver.",
+    "Production AirPlay UDP backend and longer audible concurrency are unfinished."
+  ],
+  "earlier_attempts": [
+    "An actively playing receiver was refused before mutation.",
+    "A stale helper topology view caused RemoveMember failure; both devices restored. A bounded convergence wait resolved the subsequent single and overlapping tests."
+  ]
+}

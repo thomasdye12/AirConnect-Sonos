@@ -5,12 +5,38 @@ import unittest
 from unittest.mock import patch
 import json
 import time
+import io
 
 spec = importlib.util.spec_from_file_location('controller', Path(__file__).resolve().parents[1] / 'tools' / 'airconnectctl.py')
 c = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(c)
 
 class ControllerTests(unittest.TestCase):
+    def test_save_helper_uses_root_identity_and_atomic_validated_file(self):
+        xml = b'<root xmlns="urn:schemas-upnp-org:device-1-0"><device><UDN>uuid:RINCON_02000000000101400</UDN><roomName>Helper</roomName><deviceList><device><UDN>uuid:WRONG_MR</UDN></device></deviceList></device></root>'
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / 'helper.json')
+            with patch.object(c.urllib.request, 'urlopen', return_value=io.BytesIO(xml)):
+                helper = c.save_helper(path, '192.0.2.20')
+            self.assertEqual(helper['uuid'], 'RINCON_02000000000101400')
+            self.assertEqual(c.load_helper(path), helper)
+            with patch.object(c.urllib.request, 'urlopen', return_value=io.BytesIO(b'<root/>')):
+                with self.assertRaises(ValueError): c.save_helper(path, '192.0.2.21')
+            self.assertEqual(c.load_helper(path), helper)
+
+    def test_saved_helper_used_and_partial_override_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'helper.json'
+            path.write_text(json.dumps({'version': 1, 'helper': {'address': '192.0.2.20', 'uuid': 'RINCON_02000000000101400', 'name': 'Helper'}}))
+            args = ['--helper-config', str(path), 'udp-test', '--receiver', '192.0.2.1', '--receiver-id', 'RINCON_A', '--output', 'private.json']
+            with patch.object(c.os.path, 'isfile', return_value=True), patch.object(c.subprocess, 'call', return_value=1) as call:
+                c.main(args)
+                command = call.call_args[0][0]
+                self.assertEqual(command[command.index('--coordinator') + 1], '192.0.2.20')
+                self.assertEqual(command[command.index('--coordinator-id') + 1], 'RINCON_02000000000101400')
+                call.reset_mock()
+                with self.assertRaises(ValueError): c.main(args + ['--coordinator', '192.0.2.21'])
+                call.assert_not_called()
     def test_names_and_coordinators_only(self):
         self.assertEqual(c.valid_rooms([{'coordinator': {'uuid': 'RINCON_A', 'roomName': 'Kitchen'}, 'members': []}], 'Home ', ''), [{'uuid': 'RINCON_A', 'name': 'Home Kitchen'}])
     def test_invalid_lists(self):

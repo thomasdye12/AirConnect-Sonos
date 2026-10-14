@@ -148,6 +148,18 @@ class GroupProbeTests(unittest.TestCase):
         self.assertFalse(probe.separated_in_both_views(separate, joined, UA, UB))
         self.assertFalse(probe.separated_in_both_views(joined, separate, UA, UB))
 
+    def test_waits_for_stale_helper_topology_and_times_out_without_agreement(self):
+        household = Household()
+        separate = dict(topology={'ZoneGroupState': household.topology()})
+        household.joined = True
+        joined = dict(topology={'ZoneGroupState': household.topology()})
+        readings = iter((separate, joined, separate, separate))
+        with patch.object(probe.time, 'sleep'):
+            confirmed, _, _ = probe.await_separation(lambda ip: next(readings), A, B, UA, UB)
+        self.assertTrue(confirmed)
+        confirmed, _, _ = probe.await_separation(lambda ip: separate if ip == A else joined, A, B, UA, UB, timeout=0)
+        self.assertFalse(confirmed)
+
     def completed_phase(self):
         return dict(setup_accepted=True, promotion_accepted=True, duration_seconds=120,
                     stats=dict(packets=21083, clock_requests=135),

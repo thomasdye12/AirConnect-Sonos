@@ -23,6 +23,7 @@ from native_sender import NativeSender
 from soap import call
 from probe import values, AV, RC
 from probe_pcm import pcm_packet, load_wav
+from device_lease import DeviceLease
 
 
 def validate_options(args):
@@ -86,6 +87,16 @@ def separated_in_both_views(receiver, helper, receiver_id, helper_id):
                for uid in (receiver_id, helper_id))
 
 
+def await_separation(snapshot, receiver, helper, receiver_id, helper_id, timeout=3):
+    deadline = time.monotonic() + timeout
+    while True:
+        receiver_view, helper_view = snapshot(receiver), snapshot(helper)
+        separated = separated_in_both_views(receiver_view, helper_view, receiver_id, helper_id)
+        if separated or time.monotonic() >= deadline:
+            return separated, receiver_view, helper_view
+        time.sleep(.15)
+
+
 def phase_checks(phase, receiver_id, promote=False, promotion_mode='retain'):
     """Keep sender progress separate from claimed playback/session success."""
     stats = phase['stats']
@@ -128,6 +139,16 @@ def interval_progress(phase, start, end):
 
 def run(args):
     validate_options(args)
+    if args.receiver == args.coordinator or args.receiver_id == args.coordinator_id:
+        raise ValueError('Use two different speakers')
+    timeout = getattr(args, 'lock_timeout', 15)
+    # Ownership covers snapshot through restoration. The helper can be released
+    # early only after verified detach AND restoration, while receiver stays held.
+    with DeviceLease(args.receiver_id, timeout), DeviceLease(args.coordinator_id, timeout) as helper_lease:
+        return run_owned(args, helper_lease)
+
+
+def run_owned(args, helper_lease):
     audible = getattr(args, 'audible', False)
     signal = getattr(args, 'signal', 'silence')
     wav_pcm = load_wav(args.wav, args.seconds) if getattr(args, 'wav', None) else None
@@ -160,7 +181,13 @@ def run(args):
         return {'media': av(ip, 'GetMediaInfo'), 'transport': av(ip, 'GetTransportInfo'),
                 'mute': rc(ip, 'GetMute'), 'volume': rc(ip, 'GetVolume'),
                 'topology': action(ip, 'GetZoneGroupState', {}, '/ZoneGroupTopology/Control', 'ZoneGroupTopology')}
+    def verify(ip, uid, after):
+        checks = {k: after[k] == before[ip][k] for k in ('transport', 'mute', 'volume')}
+        checks['source'] = all(after['media'].get(k) == before[ip]['media'].get(k) for k in ('CurrentURI', 'CurrentURIMetaData'))
+        checks['standalone'] = standalone(after, uid)
+        return checks
     devices = [(args.receiver, args.receiver_id), (args.coordinator, args.coordinator_id)]
+    owned_devices = list(devices)
     if args.receiver == args.coordinator or args.receiver_id == args.coordinator_id:
         raise ValueError('Use two different speakers')
     before = {ip: snapshot(ip) for ip, _ in devices}
@@ -270,11 +297,40 @@ def run(args):
                                 phase['after_promotion'], phase['helper_after_promotion'],
                                 args.receiver_id, args.coordinator_id)
                             if not phase['helper_already_released']:
+                                separated, receiver_view, helper_view = await_separation(
+                                    snapshot, args.receiver, args.coordinator, args.receiver_id, args.coordinator_id)
+                                phase['helper_already_released'] = separated
+                                phase['topology_after_settle'] = dict(receiver=receiver_view, helper=helper_view)
+                            if not phase['helper_already_released']:
                                 action(args.coordinator, 'RemoveMember', {'MemberID': args.receiver_id}, '/GroupManagement/Control', 'GroupManagement')
                                 phase['remove_member_accepted'] = True
                                 phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
                             phase['after_helper_detach'] = snapshot(args.receiver)
                             record_checkpoint(phase, 'helper_released', sender, phase_start)
+                            # Do not retain or restore a helper underneath a later
+                            # session. Release only after both topology views agree.
+                            helper_after = snapshot(args.coordinator)
+                            if not separated_in_both_views(phase['after_helper_detach'], helper_after,
+                                                          args.receiver_id, args.coordinator_id):
+                                raise RuntimeError('Detach not confirmed by both speakers; helper remains owned')
+                            rc(args.coordinator, 'SetMute', DesiredMute=1)
+                            av(args.coordinator, 'SetAVTransportURI',
+                               CurrentURI=before[args.coordinator]['media']['CurrentURI'],
+                               CurrentURIMetaData=before[args.coordinator]['media']['CurrentURIMetaData'])
+                            av(args.coordinator, 'Stop')
+                            rc(args.coordinator, 'SetVolume', DesiredVolume=before[args.coordinator]['volume']['CurrentVolume'])
+                            rc(args.coordinator, 'SetMute', DesiredMute=before[args.coordinator]['mute']['CurrentMute'])
+                            restored_helper = snapshot(args.coordinator)
+                            checks = verify(args.coordinator, args.coordinator_id, restored_helper)
+                            if not all(checks.values()):
+                                raise RuntimeError('Helper restoration not verified; helper remains owned')
+                            result.setdefault('verified', {})[args.coordinator] = checks
+                            result.setdefault('after', {})[args.coordinator] = restored_helper
+                            result['helper_released_snapshot'] = restored_helper
+                            result['helper_restored_early'] = True
+                            result['helper_lease_released_at'] = round(time.monotonic() - started, 4)
+                            owned_devices.remove((args.coordinator, args.coordinator_id))
+                            helper_lease.release()
                         if promotion_mode == 'resume':
                             av(args.receiver, 'Play', Speed=1)
                             phase['resume_accepted'] = True
@@ -288,7 +344,9 @@ def run(args):
                 phase['reference_progress'] = interval_progress(phase, 'stream_started', 'before_promotion')
                 phase['detached_progress'] = interval_progress(phase, 'helper_released', 'stream_finished')
                 phase['media'] = av(args.receiver, 'GetMediaInfo')
-                phase['coordinator_state'] = snapshot(args.coordinator)
+                phase['coordinator_state'] = (result['helper_released_snapshot'] if result.get('helper_restored_early')
+                                              else snapshot(args.coordinator))
+                phase['helper_state_observation'] = 'at_lease_release' if result.get('helper_restored_early') else 'at_stream_end'
                 phase['state'] = av(args.receiver, 'GetTransportInfo')
                 phase['topology'] = action(args.receiver, 'GetZoneGroupState', {}, '/ZoneGroupTopology/Control', 'ZoneGroupTopology')
                 phase['helper_standalone'] = standalone(phase['coordinator_state'], args.coordinator_id)
@@ -316,27 +374,25 @@ def run(args):
         if changed:
             # Break the temporary group before restoring either source. Keep both
             # muted until all source/state restoration attempts have completed.
-            operations = [(ip + ' mute for restore', lambda ip=ip: rc(ip, 'SetMute', DesiredMute=1)) for ip, _ in devices]
+            operations = [(ip + ' mute for restore', lambda ip=ip: rc(ip, 'SetMute', DesiredMute=1)) for ip, _ in owned_devices]
             operations.append(('receiver standalone', lambda: av(args.receiver, 'BecomeCoordinatorOfStandaloneGroup')))
-            for ip, _ in devices:
+            for ip, _ in owned_devices:
                 operations += [(ip + ' source', lambda ip=ip: av(ip, 'SetAVTransportURI',
                     CurrentURI=before[ip]['media']['CurrentURI'], CurrentURIMetaData=before[ip]['media']['CurrentURIMetaData'])),
                     (ip + ' stopped', lambda ip=ip: av(ip, 'Stop'))]
-            for ip, _ in devices:
+            for ip, _ in owned_devices:
                 operations.append((ip + ' volume', lambda ip=ip: rc(ip, 'SetVolume', DesiredVolume=before[ip]['volume']['CurrentVolume'])))
-            for ip, _ in devices:
+            for ip, _ in owned_devices:
                 operations.append((ip + ' mute', lambda ip=ip: rc(ip, 'SetMute', DesiredMute=before[ip]['mute']['CurrentMute'])))
             for label, operation in operations:
                 try: operation()
                 except Exception as exc: result['restore_errors'].append({'step': label, 'error': str(exc)})
-            result['verified'] = {}
-            for ip, uid in devices:
+            result.setdefault('verified', {})
+            for ip, uid in owned_devices:
                 try:
                     after = snapshot(ip)
                     result.setdefault('after', {})[ip] = after
-                    checks = {k: after[k] == before[ip][k] for k in ('transport', 'mute', 'volume')}
-                    checks['source'] = all(after['media'].get(k) == before[ip]['media'].get(k) for k in ('CurrentURI', 'CurrentURIMetaData'))
-                    checks['standalone'] = standalone(after, uid)
+                    checks = verify(ip, uid, after)
                     result['verified'][ip] = checks
                 except Exception as exc: result['restore_errors'].append({'step': ip + ' verification', 'error': str(exc)})
         save()
@@ -351,6 +407,7 @@ def main():
     for arg in ('receiver', 'receiver-id', 'coordinator', 'coordinator-id', 'output'):
         p.add_argument('--' + arg, required=True)
     p.add_argument('--seconds', type=int, choices=range(1, 121), default=3)
+    p.add_argument('--lock-timeout', type=float, default=15, help='Maximum wait for device ownership, 0..60 seconds')
     p.add_argument('--handoff-to-synthetic', action='store_true', help='After group setup, test ChangeCoordinator to a synthetic identity')
     p.add_argument('--release-coordinator', action='store_true', help='After handoff, remove receiver from the real coordinator membership list')
     p.add_argument('--reset-helper-group', action='store_true', help='After RemoveMember, request standalone state on the helper to test group independence')

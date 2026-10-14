@@ -141,3 +141,6 @@ __pycache__/
 /work/
 
 !tests/*.py
+
+# User-selected native helper contains private device identity
+native-helper.json
