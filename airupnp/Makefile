@@ -42,7 +42,7 @@ LDFLAGS 	+= -lpthread -ldl -lm -L.
 
 vpath %.c $(TOOLS):$(SRC):$(COMMON)
 
-INCLUDE = -I$(OPENSSL)/include \
+INCLUDE = -I$(BASE)/aircast/libjansson/targets/$(HOST)/$(PLATFORM)/include -I$(OPENSSL)/include \
 	  -I$(COMMON) \
 		  -I$(CODECS)/include/flac -I$(CODECS)/include/shine \
 		  -I$(TOOLS) \
@@ -53,7 +53,7 @@ INCLUDE = -I$(OPENSSL)/include \
 
 DEPS	= $(SRC)/airupnp.h $(LIBRARY) $(LIBRARY_STATIC)
 
-SOURCES = avt_util.c airupnp.c mr_util.c config_upnp.c  \
+SOURCES = sonos_api.c avt_util.c airupnp.c mr_util.c config_upnp.c  \
 	  cross_util.c cross_log.c cross_net.c cross_thread.c platform.c
 
 SOURCES_LIBS = cross_ssl.c
@@ -61,7 +61,10 @@ SOURCES_LIBS = cross_ssl.c
 OBJECTS		= $(patsubst %.c,$(BUILDDIR)/%.o,$(SOURCES) $(SOURCES_LIBS))
 OBJECTS_STATIC 	= $(patsubst %.c,$(BUILDDIR)/%.o,$(SOURCES)) $(patsubst %.c,$(BUILDDIR)/%-static.o,$(SOURCES_LIBS))
 
-LIBRARY	= $(RAOP)/$(HOST)/$(PLATFORM)/libraop.a \
+RAOP_LIBRARY ?= $(RAOP)/$(HOST)/$(PLATFORM)/libraop.a
+
+LIBRARY	= $(BASE)/aircast/libjansson/targets/$(HOST)/$(PLATFORM)/libjansson.a \
+			$(RAOP_LIBRARY) \
 			$(PUPNP)/libpupnp.a \
 			$(CODECS)/$(HOST)/$(PLATFORM)/libcodecs.a \
 			$(MDNS)/$(HOST)/$(PLATFORM)/libmdns.a

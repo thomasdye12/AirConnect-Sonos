@@ -1,0 +1,14 @@
+[Unit]
+Description=AirUPnP bridge with native Sonos API names
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/airplay_sonos
+ExecStart=/var/airplay_sonos/airupnp-linux-arm -Z -f /var/log/airupnp.log -x /var/airplay_sonos/Config.xml
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

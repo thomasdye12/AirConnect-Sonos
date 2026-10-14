@@ -28,6 +28,7 @@
 #include "avt_util.h"
 #include "config_upnp.h"
 #include "mr_util.h"
+#include "sonos_api.h"
 
 #define	AV_TRANSPORT 			"urn:schemas-upnp-org:service:AVTransport"
 #define	RENDERING_CTRL 			"urn:schemas-upnp-org:service:RenderingControl"
@@ -330,6 +331,21 @@ void HandleRAOP(void *owner, raopsr_event_t event, ...) {
 
 			// don't set volume, a RAOP_VOLUME will be sent by the controller
 			Device->RaopState = event;
+			break;
+		}
+		case RAOP_METADATA:
+		case RAOP_ARTWORK: {
+			/* Initial DIDL uses what has arrived so far. Live updates use ICY;
+			 * resetting the transport URI here would interrupt the audio. */
+			raopsr_metadata_t *metadata = va_arg(args, raopsr_metadata_t*);
+			if (!Device->Config.Metadata) break;
+			raopsr_metadata_free(&Device->SourceMetadata);
+			raopsr_metadata_copy(&Device->SourceMetadata, metadata);
+			Device->MetaData.title = Device->SourceMetadata.title;
+			Device->MetaData.artist = Device->SourceMetadata.artist;
+			Device->MetaData.album = Device->SourceMetadata.album;
+			Device->MetaData.remote_title = Device->SourceMetadata.title ? Device->SourceMetadata.title : "AirPlay";
+			Device->MetaData.artwork = Device->SourceMetadata.artwork ? Device->SourceMetadata.artwork : (*Device->Config.ArtWork ? Device->Config.ArtWork : NULL);
 			break;
 		}
 		case RAOP_VOLUME: {
@@ -771,7 +787,7 @@ static void *UpdateThread(void *args) {
 						UpnpDownloadXmlDoc(Update->Data, &DescDoc);
 						if (!friendlyName) friendlyName = XMLGetFirstDocumentItem(DescDoc, "friendlyName", true);
 
-						if (friendlyName && strcmp(friendlyName, Device->friendlyName)) {
+						if (!*glSonosAPI && friendlyName && strcmp(friendlyName, Device->friendlyName)) {
 							char* autoName = NULL;
 							(void)!asprintf(&autoName, glNameFormat, Device->friendlyName);
 							if (!strcmp(autoName, Device->Config.Name)) {
@@ -931,6 +947,7 @@ static bool AddMRDevice(struct sMR *Device, char *UDN, IXML_Document *DescDoc, c
 	memcpy(&Device->Config, &glMRConfig, sizeof(tMRConfig));
 	LoadMRConfig(glConfigID, UDN, &Device->Config);
 
+	if (*glSonosAPI) Device->Config.Enabled = sonos_api_name(UDN, Device->Config.Name, sizeof(Device->Config.Name));
 	if (!Device->Config.Enabled) return false;
 
 	// Read key elements from description document (NB: glMRConfig is fully initialized, including strings)
@@ -1127,6 +1144,7 @@ static bool Start(bool cold) {
 		goto Error;
 	}
 
+	if (*glSonosAPI && !sonos_api_fetch()) goto Error;
 	UpnpSetMaxContentLength(60000);
 	glPort = UpnpGetServerPort();
 

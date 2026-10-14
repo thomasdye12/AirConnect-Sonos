@@ -343,11 +343,11 @@ char *CreateDIDL(char *URI, char *ProtoInfo, struct metadata_s *MetaData, struct
 		div_t duration 	= div(MetaData->duration, 1000);
 
 		if (Config->SendMetaData) {
-			XMLAddNode(doc, node, "dc:title", MetaData->title);
-			XMLAddNode(doc, node, "dc:creator", MetaData->artist);
-			XMLAddNode(doc, node, "upnp:genre", MetaData->genre);
-			XMLAddNode(doc, node, "upnp:artist", MetaData->artist);
-			XMLAddNode(doc, node, "upnp:album", MetaData->album);
+			XMLAddNode(doc, node, "dc:title", "%s", MetaData->title ? MetaData->title : "");
+			XMLAddNode(doc, node, "dc:creator", "%s", MetaData->artist ? MetaData->artist : "");
+			XMLAddNode(doc, node, "upnp:genre", "%s", MetaData->genre ? MetaData->genre : "");
+			XMLAddNode(doc, node, "upnp:artist", "%s", MetaData->artist ? MetaData->artist : "");
+			XMLAddNode(doc, node, "upnp:album", "%s", MetaData->album ? MetaData->album : "");
 			if (MetaData->track) XMLAddNode(doc, node, "upnp:originalTrackNumber", "%d", MetaData->track);
 			if (MetaData->disc) XMLAddNode(doc, node, "upnp:originalDiscNumber", "%d", MetaData->disc);
 			if (MetaData->artwork) XMLAddNode(doc, node, "upnp:albumArtURI", "%s", MetaData->artwork);
@@ -360,10 +360,10 @@ char *CreateDIDL(char *URI, char *ProtoInfo, struct metadata_s *MetaData, struct
 						duration.quot % 60, duration.rem);
 	} else {
 		if (Config->SendMetaData) {
-			XMLAddNode(doc, node, "dc:title", MetaData->remote_title);
+			XMLAddNode(doc, node, "dc:title", "%s", MetaData->remote_title ? MetaData->remote_title : "");
 			XMLAddNode(doc, node, "dc:creator", "");
 			XMLAddNode(doc, node, "upnp:album", "");
-			XMLAddNode(doc, node, "upnp:channelName", MetaData->remote_title);
+			XMLAddNode(doc, node, "upnp:channelName", "%s", MetaData->remote_title ? MetaData->remote_title : "");
 			XMLAddNode(doc, node, "upnp:channelNr", "%d", MetaData->track);
 			if (MetaData->artwork) XMLAddNode(doc, node, "upnp:albumArtURI", "%s", MetaData->artwork);
 		}
@@ -432,5 +432,4 @@ char *CreateDIDL(char *URI, char *ProtoInfo, struct metadata_s *MetaData, struct
    "</item>"
 "</DIDL-Lite>"
 */
-
 

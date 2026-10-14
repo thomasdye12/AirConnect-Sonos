@@ -21,7 +21,7 @@
 #include "cross_util.h"
 #include "metadata.h"
 
-#define VERSION "v1.12.4 ("__DATE__" @ "__TIME__")"
+#define VERSION "v1.12.4-tds1 ("__DATE__" @ "__TIME__")"
 
 /*----------------------------------------------------------------------------*/
 /* typedefs */
@@ -77,6 +77,7 @@ struct sMR {
 	bool			ExpectStop;
 	struct raopsr_s *Raop;
 	metadata_t		MetaData;
+	raopsr_metadata_t SourceMetadata;
 	raopsr_event_t	RaopState;
 	uint32_t		Elapsed;
 	uint32_t		LastSeen;

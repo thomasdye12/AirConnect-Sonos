@@ -1,0 +1,226 @@
+diff --git a/src/raop_server.c b/src/raop_server.c
+index ab4610c..2bf15ae 100644
+--- a/src/raop_server.c
++++ b/src/raop_server.c
+@@ -19,6 +19,7 @@
+ #include "dmap_parser.h"
+ 
+ #include "cross_net.h"
++#include "raop_metadata_util.h"
+ #include "cross_log.h"
+ 
+ #define REMOTE_CTRL_TIMEOUT_MS	2000
+@@ -51,6 +52,9 @@ typedef struct raopsr_s {
+ 	raop_http_cb_t http_cb;
+ 	raopsr_metadata_t metadata;
+ 	bool flushedArtwork;
++	char sender[256], artwork_path[64];
++	unsigned artwork_sequence;
++	uint32_t artwork_session;
+ 	int sequence;
+ 	struct {
+ 		char				DACPid[32], id[32];
+@@ -189,6 +193,20 @@ void raopsr_update(struct raopsr_s *ctx, char *name, char *model) {
+ 	free(id);
+ }
+ 
++/* The current image lives for the session, rather than expiring mid-track. */
++static void clear_artwork(raopsr_t *ctx) {
++    if (*ctx->artwork_path) http_pico_del_source(ctx->artwork_path);
++    *ctx->artwork_path = 0;
++    NFREE(ctx->metadata.artwork);
++}
++
++static void metadata_fallback(raopsr_t *ctx) {
++    if (!ctx->metadata.title || !*ctx->metadata.title) {
++        NFREE(ctx->metadata.title);
++        (void)!asprintf(&ctx->metadata.title, "AirPlay from %s", *ctx->sender ? ctx->sender : "device");
++    }
++}
++
+ /*----------------------------------------------------------------------------*/
+ void raopsr_delete(struct raopsr_s *ctx) {
+ 	if (!ctx) return;
+@@ -196,6 +214,7 @@ void raopsr_delete(struct raopsr_s *ctx) {
+ 	ctx->running = false;
+ 	pthread_join(ctx->thread, NULL);
+ 
++	clear_artwork(ctx);
+ 	raopsr_metadata_free(&ctx->metadata);
+ 	raopst_end(ctx->ht);
+ 
+@@ -455,6 +474,14 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 		kd_add(resp, "Public", "ANNOUNCE, SETUP, RECORD, PAUSE, FLUSH, TEARDOWN, OPTIONS, GET_PARAMETER, SET_PARAMETER");
+ 	} else if (!strcmp(method, "ANNOUNCE") && body) {
+ 		char *padded, *p;
++        clear_artwork(ctx);
++        ctx->artwork_session = gettime_ms();
++        raopsr_metadata_free(&ctx->metadata);
++        const char *sender = kd_lookup(headers, "X-Apple-Client-Name");
++        if (!sender || !*sender) sender = kd_lookup(headers, "Client-Name");
++        if (!sender || !*sender) sender = inet_ntoa(ctx->peer);
++        snprintf(ctx->sender, sizeof(ctx->sender), "%s", sender);
++
+ 
+ 		NFREE(ctx->rtsp.aeskey);
+ 		NFREE(ctx->rtsp.aesiv);
+@@ -514,6 +541,9 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 		ctx->hport = ht.hport;
+ 		ctx->ht = ht.ctx;
+ 		ctx->flushedArtwork = true;
++        metadata_fallback(ctx);
++        ctx->raop_cb(ctx->owner, RAOP_METADATA, &ctx->metadata);
++        if (ctx->streamer.metadata) raopst_metadata(ctx->ht, &ctx->metadata);
+ 
+ 		if ((cport * tport * ht.cport * ht.tport * ht.aport * ht.hport) != 0 && ht.ctx) {
+ 			char *transport;
+@@ -567,6 +597,7 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 	}  else if (!strcmp(method, "TEARDOWN")) {
+ 
+ 		ctx->raop_cb(ctx->owner, RAOP_STOP);
++		clear_artwork(ctx);
+ 		raopsr_metadata_free(&ctx->metadata);
+ 		raopst_end(ctx->ht);
+ 
+@@ -585,7 +616,8 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 	} else if (!strcmp(method, "SET_PARAMETER")) {
+ 		char *p;
+ 
+-		if (body && (p = strcasestr(body, "volume")) != NULL) {
++		const char *content_type = kd_lookup(headers, "Content-Type");
++		if (body && content_type && !strcasecmp(content_type, "text/parameters") && (p = strcasestr(body, "volume")) != NULL) {
+ 			double volume;
+ 
+ 			sscanf(p, "%*[^:]:%lf", &volume);
+@@ -598,6 +630,7 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 				NULL
+ 			};
+ 
++			if (ctx->flushedArtwork) clear_artwork(ctx);
+ 			// if artwork has been received after flush, keep it
+ 			char* artwork = (!ctx->flushedArtwork && ctx->metadata.artwork) ? strdup(ctx->metadata.artwork) : NULL;
+ 			raopsr_metadata_free(&ctx->metadata);
+@@ -605,22 +638,28 @@ static bool handle_rtsp(raopsr_t* ctx, int sock)
+ 			settings.ctx = &ctx->metadata;
+ 
+ 			if (!dmap_parse(&settings, body, len)) {
++				metadata_fallback(ctx);
+ 				ctx->raop_cb(ctx->owner, RAOP_METADATA, &ctx->metadata);
+ 				if (ctx->streamer.metadata) raopst_metadata(ctx->ht, &ctx->metadata);
+ 				LOG_INFO("[%p]: received metadata\n\tartist: %s\n\talbum:  %s\n\ttitle:  %s",
+ 					ctx, ctx->metadata.artist,ctx->metadata.album, ctx->metadata.title);
+ 			}
+-		} else if (body && ((p = kd_lookup(headers, "Content-Type")) != NULL) && strcasestr(p, "image/jpeg")) {
+-				static uint32_t count;
+-				char buffer[16];
+-				sprintf(buffer, "/%x.jpg", (ctx->metadata.title ? hash32(ctx->metadata.title) : 0) + count++);
+-				NFREE(ctx->metadata.artwork);
+-				ctx->metadata.artwork = http_pico_add_source(buffer, "image/jpeg", (uint8_t*) body, len, 120);
+-				LOG_INFO("[%p]: received JPEG image of %d bytes", ctx, len);
+-				ctx->flushedArtwork = false;
+-				ctx->raop_cb(ctx->owner, RAOP_ARTWORK, &ctx->metadata, body, len);
+-				raopst_metadata(ctx->ht, &ctx->metadata);
+-		}
++        } else if (content_type && !strcasecmp(content_type, "image/none")) {
++            clear_artwork(ctx);
++            metadata_fallback(ctx);
++            ctx->raop_cb(ctx->owner, RAOP_ARTWORK, &ctx->metadata, NULL, 0);
++            if (ctx->streamer.metadata) raopst_metadata(ctx->ht, &ctx->metadata);
++        } else if (body && len > 0 && (p = (char*)raop_image_type(content_type, body, len))) {
++            clear_artwork(ctx);
++            snprintf(ctx->artwork_path, sizeof(ctx->artwork_path),
++                "/art-%02x%02x%02x%02x%02x%02x-%u-%u.%s", ctx->mac[0], ctx->mac[1],
++                ctx->mac[2], ctx->mac[3], ctx->mac[4], ctx->mac[5], ctx->artwork_session, ++ctx->artwork_sequence, p);
++            ctx->metadata.artwork = http_pico_add_source(ctx->artwork_path, (char*)content_type, (uint8_t*)body, len, 0);
++            metadata_fallback(ctx);
++            ctx->flushedArtwork = false;
++            ctx->raop_cb(ctx->owner, RAOP_ARTWORK, &ctx->metadata, body, len);
++            if (ctx->streamer.metadata) raopst_metadata(ctx->ht, &ctx->metadata);
++        }
+ 	} else {
+ 		response = "RTSP/1.0 501 Not Implemented";
+     	LOG_ERROR("[%p]: unknown/unhandled method %s", ctx, method);
+diff --git a/src/raop_streamer.c b/src/raop_streamer.c
+index 0ca8b46..1312a66 100644
+--- a/src/raop_streamer.c
++++ b/src/raop_streamer.c
+@@ -23,6 +23,7 @@
+ #include "alac.h"
+ 
+ #include "cross_net.h"
++#include "raop_metadata_util.h"
+ #include "cross_log.h"
+ #include "cross_util.h"
+ 
+@@ -1017,19 +1018,11 @@ static void *http_thread_func(void *arg) {
+ 					char buffer[ICY_LEN_MAX];
+ 
+ 					if (ctx->icy.updated) {
+-						char *format;
+-
+-						// there is room for 1 extra byte at the beginning for length
+-						if (ctx->metadata.artwork) format = "NStreamTitle='%s%s%s';StreamURL='%s';";
+-						else format = "NStreamTitle='%s%s%s';";
+-						int len = sprintf(buffer, format, ctx->metadata.artist,
+-										 ctx->metadata.artist ? " - " : "",
+-										 ctx->metadata.title, ctx->metadata.artwork) - 1;
+-						LOG_INFO("[%p]: ICY update %s", ctx, buffer + 1);
+-						len_16 = (len + 15) / 16;
+-						memset(buffer + len + 1, 0, len_16 * 16 - len);
+-						ctx->icy.updated = false;
+-						raopsr_metadata_free(&ctx->metadata);
++                        size_t packet_size = raop_icy_packet((uint8_t*)buffer,
++                            ctx->metadata.artist, ctx->metadata.title, ctx->metadata.artwork);
++                        len_16 = (packet_size - 1) / 16;
++                        ctx->icy.updated = false;
++                        /* Keep current metadata for renderer HTTP reconnects. */
+ 					}
+ 
+ 					buffer[0] = len_16;
+diff --git a/src/raop_metadata_util.h b/src/raop_metadata_util.h
+new file mode 100644
+--- /dev/null
++++ b/src/raop_metadata_util.h
+@@ -0,0 +1,42 @@
++#pragma once
++
++#include <stdio.h>
++#include <stdint.h>
++#include <string.h>
++
++/* ICY has a one-byte length in units of 16 bytes. Keep fields bounded and
++ * prevent quotes/control characters from terminating its quoted values. */
++#define RAOP_ICY_MAX (255 * 16 + 1)
++static inline void raop_icy_text(char *out, size_t size, const char *in) {
++    size_t n = in ? strlen(in) : 0;
++    if (n >= size) {
++        n = size - 1;
++        while (n && ((unsigned char)in[n] & 0xc0) == 0x80) n--;
++    }
++    for (size_t i = 0; i < n; i++) {
++        unsigned char c = in[i];
++        out[i] = (c < 32 || c == 127) ? ' ' : c == '\'' ? '`' : c == '\\' ? '/' : c;
++    }
++    out[n] = 0;
++}
++
++static inline size_t raop_icy_packet(uint8_t out[RAOP_ICY_MAX], const char *artist,
++                                    const char *title, const char *artwork) {
++    char a[1024], t[1024], u[1024];
++    raop_icy_text(a, sizeof(a), artist);
++    raop_icy_text(t, sizeof(t), title);
++    raop_icy_text(u, sizeof(u), artwork);
++    memset(out, 0, RAOP_ICY_MAX);
++    int n = snprintf((char*)out + 1, RAOP_ICY_MAX - 1, "StreamTitle='%s%s%s';%s%s%s",
++        a, *a && *t ? " - " : "", t, *u ? "StreamURL='" : "", u, *u ? "';" : "");
++    out[0] = (n + 15) / 16;
++    return 1 + out[0] * 16;
++}
++
++static inline const char *raop_image_type(const char *type, const void *data, size_t len) {
++    const unsigned char *p = data;
++    if (!type || !p || len > 4 * 1024 * 1024) return NULL;
++    if (!strcmp(type, "image/jpeg") && len >= 3 && p[0] == 0xff && p[1] == 0xd8 && p[2] == 0xff) return "jpg";
++    if (!strcmp(type, "image/png") && len >= 8 && !memcmp(p, "\x89PNG\r\n\x1a\n", 8)) return "png";
++    return NULL;
++}

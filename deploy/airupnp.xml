@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<airupnp>
+  <sonos_api>http://sonos-api.local:5005/zones</sonos_api>
+  <sonos_name_prefix></sonos_name_prefix>
+  <sonos_name_suffix> (Sonos)</sonos_name_suffix>
+  <common>
+    <enabled>0</enabled>
+    <codec>mp3:320</codec>
+    <metadata>1</metadata>
+    <artwork></artwork>
+    <http_length>-3</http_length>
+    <stream_type>broadcast</stream_type>
+    <latency>1000:2000</latency>
+    <drift>0</drift>
+    <flush>1</flush>
+    <max_volume>100</max_volume>
+    <upnp_max>1</upnp_max>
+  </common>
+  <log_limit>5</log_limit>
+  <max_players>50</max_players>
+  <binding>?</binding>
+  <ports>0:0</ports>
+  <main_log>info</main_log>
+  <raop_log>info</raop_log>
+  <upnp_log>info</upnp_log>
+  <util_log>warn</util_log>
+</airupnp>

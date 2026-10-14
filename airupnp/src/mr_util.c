@@ -163,6 +163,8 @@ void FlushMRDevices(void) {
 
 /*----------------------------------------------------------------------------*/
 void DelMRDevice(struct sMR *p) {
+	/* The RAOP server is already stopped by the caller. */
+	raopsr_metadata_free(&p->SourceMetadata);
 	// try to unsubscribe but missing players will not succeed and as a result
 	// terminating the libupnp takes a while ...
 	for (int i = 0; i < NB_SRV; i++) {

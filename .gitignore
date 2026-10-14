@@ -116,3 +116,12 @@ air*/bin
 *.bat
 bin/
 !AirConnect*.zip
+
+# Custom bridge regression tests
+!tests/
+!tests/*.c
+!tests/*.sh
+tests/bin/
+
+# Local release artifacts are uploaded separately
+/release/
