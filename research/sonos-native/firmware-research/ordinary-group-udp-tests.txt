@@ -1,0 +1,82 @@
+Native UDP via ordinary grouping — 14 October 2026
+
+Latest result
+A physical Connect and its line-in are not necessary to establish the observed
+native PCM receiver. An ordinary stopped Sonos speaker can provide group setup.
+A two-minute silent control run with that coordinator retained sent 21,083 PCM
+packets, received 135 timing requests, had zero late sends and ended PLAYING/OK.
+This is a bounded control/data-plane result, not an audible or latency test.
+A real Sonos coordinator is still required by this demonstrated stable route.
+
+New setup sequence
+1. Verify helper and receiver are stopped and standalone; save source/metadata,
+   transport, volume, mute and topology, then mute both.
+2. Receiver SetAVTransportURI x-rincon:<ordinary helper UUID> joins the group.
+3. Receiver ChangeTransportSettings installs the software sender address and its
+   independent timing port, retaining the helper source identity and group URI.
+4. Send native 44.1 kHz stereo PCM to receiver UDP 7020 and answer its clock.
+No AudioIn or VirtualLineIn call is made, and no helper music is started.
+
+Software coordinator experiments
+Once already a member, ChangeCoordinator accepts a separate synthetic coordinator
+identity and its transport endpoints. A ten-second test passed. RemoveMember on
+the helper returns success, but did not by itself remove the old shared topology.
+Calling BecomeCoordinatorOfStandaloneGroup on the helper creates a new helper
+group without delegating to the test receiver. The UDP stream continued for the
+15-second test. The receiver then appears alone in its old group with an empty
+Coordinator attribute. That is an orphaned group, not a registered virtual player.
+
+Two receiver processes used distinct synthetic identities and timing ports. A
+live read-only observation found both PLAYING, each with its own x-rincon software
+source, while the helper was stopped. The shorter 30-second run passed; the
+longer intended 120-second run failed after 13,451 packets (76.557 seconds of
+PCM), with ECONNREFUSED. Independent stopping of healthy sustained sessions was
+not demonstrated: the long receiver had already failed by the after-stop check.
+
+Isolation test
+An intended 120-second single-receiver test, with no second receiver or helper
+reuse, failed after 13,423 packets (76.397 seconds). The failure snapshot showed
+STOPPED/OK and an empty CurrentURI. Thus concurrency is not required to trigger
+this failure. Retaining the real coordinator passed the full 120-second control.
+Timing traffic begins at roughly two requests per second and later slows; this
+normal rate change alone is not evidence of a failed timing server.
+
+Static explanation — inference, nearby firmware
+The Play:3 86.10-81100 binary contains the following path; installed test speakers
+run 86.10-80260, so this is not an instruction-level trace of their live execution.
+- ChangeCoordinator at 0x102885f0 calls 0x10349dc8. The latter requires the named
+  current coordinator to match stored state, rejects the local player as old or
+  new coordinator, and requires a 24-character replacement identity. This explains
+  why a member handoff can succeed while the earlier standalone shortcut fails.
+- monitorCoordinator at 0x10349fe8 compares the current coordinator's known group
+  with the member's stored group through 0x10349ef8. That calls 0x10694e18, which
+  uses eligible peer lookup 0x1069e1c0 and reads the peer's group identifier.
+  Earlier analysis established that this lookup excludes quarantined peer records.
+- A failed check increments object+0xb9c; after it exceeds three, the code emits
+  the broken-linkage diagnostic and invokes the coordinator-loss callback.
+- The wrapper at 0x1034a164 reschedules after 20 seconds. Initial group setup
+  schedules the same monitor at 0x10352c74. Four failed checks are consistent with
+  the roughly 76 seconds remaining after the three-second setup phase.
+This strongly implicates ongoing coordinator/topology validation, rather than
+UDP packet formatting alone. It does not prove the precise installed-build
+callback or show a legitimate means of registering a trusted software player.
+
+Next implementation gate
+Provide an eligible coordinator with a matching group identity throughout the
+session, or identify a receiver input route that does not depend on this group
+monitor. Repeated fake pairing and a successful ChangeCoordinator reply alone do
+not establish either. A retained ordinary Sonos helper is a viable research
+baseline, but changes grouping and is not the independent per-room product goal.
+Do not deploy the 76-second orphaned-group workaround as an AirPlay backend.
+
+Code and validation
+../group_receiver_probe.py provides bounded silent ordinary-group, handoff,
+RemoveMember and helper-standalone experiments with private JSON output, per-second
+sender counters and failure-state capture. Identities are deterministic per test
+receiver; timing ports are independently allocated. Four offline tests cover
+preflight refusal, rollback after rejected setup, continuing restoration after a
+failed step and independent synthetic identities.
+All eight recorded live cases verified original source, transport, mute, volume
+and standalone topology restored, with no restoration errors. Production tds2
+AirConnect was not modified. No credentials, pairing, firmware or audible tests.
+Structured results: ordinary-group-udp-tests.json.

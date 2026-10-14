@@ -1,5 +1,9 @@
 # Fork changes
 
+## Research follow-up — 2026-10-14
+
+Ordinary group setup supported a 120-second silent native UDP stream without Connect-specific or line-in calls. Two software-source receiver streams were observed concurrently, but an isolated long run confirms a roughly 76-second orphaned-group failure. Added the bounded probe, four rollback/preflight tests, sanitized evidence and a nearby-firmware coordinator-monitor trace. This does not change the deployed tds2 bridge or establish an independent native backend.
+
 ## v1.12.4-tds2 — 2026-10-14
 
 - Optional native room-list cache: validated coordinator data, 24-hour expiry, API URL binding, atomic private writes, current prefix/suffix applied on load.

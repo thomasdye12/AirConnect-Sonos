@@ -1,3 +1,9 @@
+LATEST: ordinary stopped-speaker grouping also establishes the native receiver;
+Connect-specific AudioIn setup is no longer required. Sustained independent
+software coordination remains unresolved (roughly 76-second orphan timeout).
+See ../firmware-research/ordinary-group-udp-tests.txt. Earlier results below remain
+historical evidence, not the only known bootstrap route.
+
 Native sender integration notes
 
 sonos_packet.c and sonos_sender.c are portable C99 with POSIX sockets/pthreads.

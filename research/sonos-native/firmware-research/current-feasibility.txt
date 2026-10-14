@@ -1,3 +1,9 @@
+LATEST FOLLOW-UP: ordinary-group UDP tests no longer require a Connect or line-in.
+A valid ordinary Sonos coordinator supported a 120-second silent stream. Synthetic
+coordinator handoff is temporary: isolated tests lose the receiver around 76 seconds.
+See ordinary-group-udp-tests.txt for the observed results and topology-monitor trace.
+The chronological conclusions below predate this additional evidence.
+
 Independent native AirPlay-to-Sonos: current feasibility
 
 NOT FINISHED. No deployable, Connect-free native audio backend has been produced.

@@ -1,11 +1,11 @@
-# Sonos transport research — archived at tds2
+# Sonos transport research
 
-These are research tools alongside AirConnect-Sonos, not an installed AirPlay output backend. Start here instead of the chronological notes. No virtual player needs to run for normal AirConnect playback.
+These are research tools alongside AirConnect-Sonos, not an installed AirPlay output backend. Start here instead of the chronological notes. Latest follow-up: [ordinary-group UDP tests](firmware-research/ordinary-group-udp-tests.txt) remove the Connect-specific requirement, but sustained operation still needs a valid real coordinator. No virtual player needs to run for normal AirConnect playback.
 
 | Path | Evidence | Remaining work |
 | --- | --- | --- |
 | Normal AirConnect UPnP HTTP | Existing deployed bridge; user-confirmed music | Dynamic artwork and acoustic latency improvements |
-| Native UDP PCM | Clear tones/music confirmed with a real Connect establishing the group session; portable C sender; eight independent loopback sessions | Independent receiver setup, recovery, drift handling, AirPlay lifecycle integration |
+| Native UDP PCM | Historical clear music with Connect setup; now a 120-second silent run with an ordinary stopped coordinator, no line-in calls; two temporary software-source streams observed concurrently | Software-coordinator streams time out around 76 seconds; independent setup, recovery, drift and AirPlay integration remain unfinished |
 | Local API HTTP audioClip | Silent finite streams of 12 and 40 seconds; lengthless streams; separate streams/cancellation on two speakers without Connect | Listening test, longer endurance, actual latency, AirPlay integration and volume/metadata behavior |
 | Virtual Connect | Discovery/descriptor/TLS observer and compatibility tests | Trusted enrollment and playback; app crashes occurred during earlier experiments |
 
@@ -51,3 +51,13 @@ For audible experiments, `clip_stream_probe.py` separately requires `--audible -
 - See [repository attribution](../../NOTICE.md) for original AirConnect credit and licensing.
 
 The archive includes original source and sanitized research notes. Raw captures/HAR/crash files, recordings, disassembly dumps, firmware, account secrets, real household/device identities and local state are excluded. Paths mentioned by historical notes may refer to private evidence that is not distributed. Example IP addresses use the documentation range.
+
+## Ordinary-group UDP probe
+
+Python 3.8+ and the built native library are required. Both devices must initially be stopped and standalone. This changes grouping temporarily, sends silence, and restores/verifies both devices:
+
+```sh
+python3 group_receiver_probe.py --receiver SPEAKER_IP --receiver-id SPEAKER_UUID --coordinator HELPER_IP --coordinator-id HELPER_UUID --seconds 120 --output PRIVATE_RESULTS.json
+```
+
+`--handoff-to-synthetic --release-coordinator --reset-helper-group` investigates the orphaned-group failure; it is expected to fail the longer test. These flags do not enroll a virtual Sonos device. Do not run multiple probe processes against a shared helper without coordinating their setup and restoration; this standalone harness is not a session manager.

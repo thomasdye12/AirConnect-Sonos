@@ -1,0 +1,1499 @@
+{
+  "date": "2026-10-14",
+  "production_bridge_modified": false,
+  "connect_or_line_in_calls": false,
+  "audible_quality_verified": false,
+  "acoustic_latency_measured": false,
+  "independent_setup_solved": false,
+  "cases": [
+    {
+      "case": "ordinary-group-udp-probe",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 2.999
+        }
+      ]
+    },
+    {
+      "case": "ordinary-group-synthetic-handoff",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "stats": {
+            "packets": 1756,
+            "clock_requests": 20,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 9.994
+        },
+        {
+          "name": "synthetic-coordinator",
+          "stats": {
+            "packets": 1756,
+            "clock_requests": 20,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 9.994
+        }
+      ]
+    },
+    {
+      "case": "ordinary-group-released-udp",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 2.999
+        },
+        {
+          "name": "synthetic-coordinator",
+          "stats": {
+            "packets": 7027,
+            "clock_requests": 79,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 39.995
+        }
+      ]
+    },
+    {
+      "case": "ordinary-group-helper-standalone",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 2.999
+        },
+        {
+          "name": "synthetic-coordinator",
+          "stats": {
+            "packets": 2635,
+            "clock_requests": 30,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "pcm_duration_sent_seconds": 14.997
+        }
+      ]
+    },
+    {
+      "case": "native-concurrent-server",
+      "error": "[Errno 61] Connection refused",
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "duration_seconds": 3,
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "transport_check_passed": true,
+          "helper_standalone": false,
+          "pcm_duration_sent_seconds": 2.999,
+          "receiver_coordinator_known_to_topology": true
+        },
+        {
+          "name": "synthetic-coordinator",
+          "duration_seconds": 120,
+          "stats": {
+            "packets": 13451,
+            "clock_requests": 113,
+            "late_packets": 0
+          },
+          "error": "[Errno 61] Connection refused",
+          "transport_check_passed": false,
+          "pcm_duration_sent_seconds": 76.558
+        }
+      ]
+    },
+    {
+      "case": "native-concurrent-kitchen",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "duration_seconds": 3,
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "transport_check_passed": true,
+          "helper_standalone": false,
+          "pcm_duration_sent_seconds": 2.999,
+          "receiver_coordinator_known_to_topology": true
+        },
+        {
+          "name": "synthetic-coordinator",
+          "duration_seconds": 30,
+          "stats": {
+            "packets": 5270,
+            "clock_requests": 60,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "transport_check_passed": true,
+          "helper_standalone": true,
+          "pcm_duration_sent_seconds": 29.995,
+          "receiver_coordinator_known_to_topology": false
+        }
+      ]
+    },
+    {
+      "case": "native-single-endurance",
+      "error": "[Errno 61] Connection refused",
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "duration_seconds": 3,
+          "stats": {
+            "packets": 527,
+            "clock_requests": 6,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "transport_check_passed": true,
+          "helper_standalone": false,
+          "pcm_duration_sent_seconds": 2.999,
+          "receiver_coordinator_known_to_topology": true,
+          "progress": [
+            {
+              "elapsed": 1.0,
+              "packets": 176,
+              "clock_requests": 2,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 2.011,
+              "packets": 354,
+              "clock_requests": 4,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 2.995,
+              "packets": 527,
+              "clock_requests": 6,
+              "late_packets": 0
+            }
+          ]
+        },
+        {
+          "name": "synthetic-coordinator",
+          "duration_seconds": 120,
+          "stats": {
+            "packets": 13423,
+            "clock_requests": 113,
+            "late_packets": 0
+          },
+          "error": "[Errno 61] Connection refused",
+          "transport_check_passed": false,
+          "pcm_duration_sent_seconds": 76.398,
+          "failure_transport": {
+            "CurrentTransportState": "STOPPED",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "source_cleared_at_failure": true,
+          "progress": [
+            {
+              "elapsed": 1.006,
+              "packets": 203,
+              "clock_requests": 2,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 2.017,
+              "packets": 380,
+              "clock_requests": 4,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 3.024,
+              "packets": 557,
+              "clock_requests": 6,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 4.036,
+              "packets": 735,
+              "clock_requests": 8,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 5.04,
+              "packets": 912,
+              "clock_requests": 10,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 6.052,
+              "packets": 1089,
+              "clock_requests": 12,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 7.058,
+              "packets": 1266,
+              "clock_requests": 14,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 8.071,
+              "packets": 1444,
+              "clock_requests": 16,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 9.083,
+              "packets": 1622,
+              "clock_requests": 18,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 10.088,
+              "packets": 1798,
+              "clock_requests": 20,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 11.101,
+              "packets": 1977,
+              "clock_requests": 22,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 12.105,
+              "packets": 2153,
+              "clock_requests": 24,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 13.117,
+              "packets": 2331,
+              "clock_requests": 26,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 14.13,
+              "packets": 2509,
+              "clock_requests": 28,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 15.136,
+              "packets": 2686,
+              "clock_requests": 30,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 16.139,
+              "packets": 2861,
+              "clock_requests": 32,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 17.151,
+              "packets": 3039,
+              "clock_requests": 34,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 18.159,
+              "packets": 3216,
+              "clock_requests": 36,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 19.164,
+              "packets": 3393,
+              "clock_requests": 38,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 20.173,
+              "packets": 3571,
+              "clock_requests": 40,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 21.185,
+              "packets": 3748,
+              "clock_requests": 42,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 22.198,
+              "packets": 3926,
+              "clock_requests": 44,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 23.207,
+              "packets": 4103,
+              "clock_requests": 46,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 24.218,
+              "packets": 4281,
+              "clock_requests": 48,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 25.229,
+              "packets": 4459,
+              "clock_requests": 50,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 26.237,
+              "packets": 4636,
+              "clock_requests": 52,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 27.243,
+              "packets": 4813,
+              "clock_requests": 54,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 28.255,
+              "packets": 4990,
+              "clock_requests": 56,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 29.259,
+              "packets": 5167,
+              "clock_requests": 58,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 30.271,
+              "packets": 5344,
+              "clock_requests": 60,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 31.279,
+              "packets": 5522,
+              "clock_requests": 62,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 32.281,
+              "packets": 5698,
+              "clock_requests": 64,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 33.291,
+              "packets": 5875,
+              "clock_requests": 66,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 34.294,
+              "packets": 6052,
+              "clock_requests": 68,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 35.298,
+              "packets": 6228,
+              "clock_requests": 70,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 36.308,
+              "packets": 6405,
+              "clock_requests": 72,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 37.312,
+              "packets": 6582,
+              "clock_requests": 74,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 38.318,
+              "packets": 6758,
+              "clock_requests": 76,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 39.325,
+              "packets": 6936,
+              "clock_requests": 78,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 40.335,
+              "packets": 7113,
+              "clock_requests": 80,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 41.339,
+              "packets": 7289,
+              "clock_requests": 82,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 42.351,
+              "packets": 7467,
+              "clock_requests": 84,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 43.355,
+              "packets": 7643,
+              "clock_requests": 86,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 44.366,
+              "packets": 7821,
+              "clock_requests": 88,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 45.379,
+              "packets": 7999,
+              "clock_requests": 90,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 46.382,
+              "packets": 8175,
+              "clock_requests": 92,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 47.391,
+              "packets": 8353,
+              "clock_requests": 94,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 48.402,
+              "packets": 8530,
+              "clock_requests": 96,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 49.414,
+              "packets": 8708,
+              "clock_requests": 98,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 50.425,
+              "packets": 8886,
+              "clock_requests": 100,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 51.436,
+              "packets": 9063,
+              "clock_requests": 101,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 52.449,
+              "packets": 9241,
+              "clock_requests": 101,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 53.455,
+              "packets": 9418,
+              "clock_requests": 102,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 54.467,
+              "packets": 9596,
+              "clock_requests": 102,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 55.47,
+              "packets": 9772,
+              "clock_requests": 103,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 56.481,
+              "packets": 9950,
+              "clock_requests": 103,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 57.492,
+              "packets": 10127,
+              "clock_requests": 104,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 58.498,
+              "packets": 10304,
+              "clock_requests": 104,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 59.503,
+              "packets": 10481,
+              "clock_requests": 105,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 60.51,
+              "packets": 10658,
+              "clock_requests": 105,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 61.518,
+              "packets": 10835,
+              "clock_requests": 106,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 62.529,
+              "packets": 11012,
+              "clock_requests": 106,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 63.539,
+              "packets": 11189,
+              "clock_requests": 107,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 64.551,
+              "packets": 11368,
+              "clock_requests": 107,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 65.56,
+              "packets": 11545,
+              "clock_requests": 108,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 66.57,
+              "packets": 11722,
+              "clock_requests": 108,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 67.573,
+              "packets": 11899,
+              "clock_requests": 109,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 68.576,
+              "packets": 12075,
+              "clock_requests": 109,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 69.584,
+              "packets": 12252,
+              "clock_requests": 110,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 70.596,
+              "packets": 12429,
+              "clock_requests": 110,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 71.603,
+              "packets": 12607,
+              "clock_requests": 111,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 72.614,
+              "packets": 12784,
+              "clock_requests": 111,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 73.625,
+              "packets": 12962,
+              "clock_requests": 112,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 74.633,
+              "packets": 13139,
+              "clock_requests": 112,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 75.645,
+              "packets": 13316,
+              "clock_requests": 113,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 76.254,
+              "packets": 13423,
+              "clock_requests": 113,
+              "late_packets": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "case": "native-real-coordinator-control",
+      "error": null,
+      "restoration_verified": true,
+      "restore_error_count": 0,
+      "phases": [
+        {
+          "name": "ordinary-group",
+          "duration_seconds": 120,
+          "stats": {
+            "packets": 21083,
+            "clock_requests": 135,
+            "late_packets": 0
+          },
+          "state": {
+            "CurrentTransportState": "PLAYING",
+            "CurrentTransportStatus": "OK",
+            "CurrentSpeed": "1"
+          },
+          "transport_check_passed": true,
+          "helper_standalone": false,
+          "pcm_duration_sent_seconds": 119.996,
+          "receiver_coordinator_known_to_topology": true,
+          "progress": [
+            {
+              "elapsed": 1.008,
+              "packets": 178,
+              "clock_requests": 2,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 2.014,
+              "packets": 354,
+              "clock_requests": 4,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 3.025,
+              "packets": 532,
+              "clock_requests": 6,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 4.036,
+              "packets": 710,
+              "clock_requests": 8,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 5.044,
+              "packets": 887,
+              "clock_requests": 10,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 6.046,
+              "packets": 1063,
+              "clock_requests": 12,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 7.051,
+              "packets": 1240,
+              "clock_requests": 14,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 8.063,
+              "packets": 1417,
+              "clock_requests": 16,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 9.073,
+              "packets": 1595,
+              "clock_requests": 18,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 10.079,
+              "packets": 1772,
+              "clock_requests": 20,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 11.082,
+              "packets": 1948,
+              "clock_requests": 22,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 12.095,
+              "packets": 2125,
+              "clock_requests": 24,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 13.104,
+              "packets": 2303,
+              "clock_requests": 26,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 14.112,
+              "packets": 2480,
+              "clock_requests": 28,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 15.117,
+              "packets": 2656,
+              "clock_requests": 30,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 16.119,
+              "packets": 2832,
+              "clock_requests": 32,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 17.131,
+              "packets": 3010,
+              "clock_requests": 34,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 18.142,
+              "packets": 3188,
+              "clock_requests": 36,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 19.146,
+              "packets": 3364,
+              "clock_requests": 38,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 20.153,
+              "packets": 3542,
+              "clock_requests": 40,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 21.163,
+              "packets": 3719,
+              "clock_requests": 42,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 22.166,
+              "packets": 3895,
+              "clock_requests": 44,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 23.168,
+              "packets": 4071,
+              "clock_requests": 46,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 24.17,
+              "packets": 4247,
+              "clock_requests": 48,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 25.182,
+              "packets": 4425,
+              "clock_requests": 50,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 26.193,
+              "packets": 4603,
+              "clock_requests": 52,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 27.198,
+              "packets": 4779,
+              "clock_requests": 54,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 28.201,
+              "packets": 4955,
+              "clock_requests": 56,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 29.204,
+              "packets": 5132,
+              "clock_requests": 58,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 30.213,
+              "packets": 5309,
+              "clock_requests": 60,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 31.222,
+              "packets": 5486,
+              "clock_requests": 62,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 32.233,
+              "packets": 5664,
+              "clock_requests": 64,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 33.242,
+              "packets": 5841,
+              "clock_requests": 66,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 34.253,
+              "packets": 6019,
+              "clock_requests": 68,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 35.263,
+              "packets": 6196,
+              "clock_requests": 70,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 36.267,
+              "packets": 6373,
+              "clock_requests": 72,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 37.279,
+              "packets": 6551,
+              "clock_requests": 74,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 38.292,
+              "packets": 6728,
+              "clock_requests": 76,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 39.296,
+              "packets": 6905,
+              "clock_requests": 78,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 40.3,
+              "packets": 7081,
+              "clock_requests": 80,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 41.303,
+              "packets": 7257,
+              "clock_requests": 82,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 42.315,
+              "packets": 7435,
+              "clock_requests": 84,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 43.319,
+              "packets": 7612,
+              "clock_requests": 86,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 44.327,
+              "packets": 7789,
+              "clock_requests": 88,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 45.331,
+              "packets": 7965,
+              "clock_requests": 90,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 46.34,
+              "packets": 8142,
+              "clock_requests": 92,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 47.351,
+              "packets": 8320,
+              "clock_requests": 94,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 48.363,
+              "packets": 8498,
+              "clock_requests": 96,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 49.374,
+              "packets": 8675,
+              "clock_requests": 98,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 50.384,
+              "packets": 8853,
+              "clock_requests": 100,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 51.396,
+              "packets": 9031,
+              "clock_requests": 101,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 52.407,
+              "packets": 9208,
+              "clock_requests": 101,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 53.411,
+              "packets": 9385,
+              "clock_requests": 102,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 54.422,
+              "packets": 9562,
+              "clock_requests": 102,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 55.433,
+              "packets": 9740,
+              "clock_requests": 103,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 56.444,
+              "packets": 9918,
+              "clock_requests": 103,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 57.449,
+              "packets": 10094,
+              "clock_requests": 104,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 58.459,
+              "packets": 10272,
+              "clock_requests": 104,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 59.47,
+              "packets": 10449,
+              "clock_requests": 105,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 60.478,
+              "packets": 10627,
+              "clock_requests": 105,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 61.49,
+              "packets": 10804,
+              "clock_requests": 106,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 62.5,
+              "packets": 10982,
+              "clock_requests": 106,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 63.503,
+              "packets": 11158,
+              "clock_requests": 107,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 64.509,
+              "packets": 11335,
+              "clock_requests": 107,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 65.517,
+              "packets": 11512,
+              "clock_requests": 108,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 66.524,
+              "packets": 11689,
+              "clock_requests": 108,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 67.528,
+              "packets": 11865,
+              "clock_requests": 109,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 68.538,
+              "packets": 12042,
+              "clock_requests": 109,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 69.547,
+              "packets": 12220,
+              "clock_requests": 110,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 70.558,
+              "packets": 12397,
+              "clock_requests": 110,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 71.561,
+              "packets": 12573,
+              "clock_requests": 111,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 72.565,
+              "packets": 12750,
+              "clock_requests": 111,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 73.577,
+              "packets": 12928,
+              "clock_requests": 112,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 74.59,
+              "packets": 13106,
+              "clock_requests": 112,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 75.599,
+              "packets": 13283,
+              "clock_requests": 113,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 76.609,
+              "packets": 13461,
+              "clock_requests": 113,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 77.612,
+              "packets": 13637,
+              "clock_requests": 114,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 78.623,
+              "packets": 13814,
+              "clock_requests": 114,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 79.633,
+              "packets": 13992,
+              "clock_requests": 115,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 80.644,
+              "packets": 14169,
+              "clock_requests": 115,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 81.656,
+              "packets": 14347,
+              "clock_requests": 116,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 82.661,
+              "packets": 14524,
+              "clock_requests": 116,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 83.665,
+              "packets": 14700,
+              "clock_requests": 117,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 84.671,
+              "packets": 14877,
+              "clock_requests": 117,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 85.681,
+              "packets": 15054,
+              "clock_requests": 118,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 86.687,
+              "packets": 15232,
+              "clock_requests": 118,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 87.696,
+              "packets": 15409,
+              "clock_requests": 119,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 88.702,
+              "packets": 15585,
+              "clock_requests": 120,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 89.713,
+              "packets": 15763,
+              "clock_requests": 120,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 90.725,
+              "packets": 15941,
+              "clock_requests": 121,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 91.729,
+              "packets": 16117,
+              "clock_requests": 121,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 92.734,
+              "packets": 16293,
+              "clock_requests": 122,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 93.736,
+              "packets": 16470,
+              "clock_requests": 122,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 94.742,
+              "packets": 16647,
+              "clock_requests": 123,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 95.75,
+              "packets": 16824,
+              "clock_requests": 123,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 96.752,
+              "packets": 17000,
+              "clock_requests": 124,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 97.764,
+              "packets": 17177,
+              "clock_requests": 124,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 98.776,
+              "packets": 17355,
+              "clock_requests": 125,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 99.78,
+              "packets": 17532,
+              "clock_requests": 125,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 100.792,
+              "packets": 17709,
+              "clock_requests": 126,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 101.801,
+              "packets": 17886,
+              "clock_requests": 126,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 102.808,
+              "packets": 18064,
+              "clock_requests": 127,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 103.819,
+              "packets": 18241,
+              "clock_requests": 127,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 104.827,
+              "packets": 18418,
+              "clock_requests": 128,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 105.833,
+              "packets": 18595,
+              "clock_requests": 128,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 106.841,
+              "packets": 18772,
+              "clock_requests": 129,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 107.844,
+              "packets": 18948,
+              "clock_requests": 129,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 108.854,
+              "packets": 19126,
+              "clock_requests": 130,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 109.865,
+              "packets": 19304,
+              "clock_requests": 130,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 110.873,
+              "packets": 19481,
+              "clock_requests": 131,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 111.882,
+              "packets": 19658,
+              "clock_requests": 131,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 112.889,
+              "packets": 19835,
+              "clock_requests": 132,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 113.897,
+              "packets": 20012,
+              "clock_requests": 132,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 114.907,
+              "packets": 20189,
+              "clock_requests": 133,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 115.91,
+              "packets": 20366,
+              "clock_requests": 133,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 116.922,
+              "packets": 20543,
+              "clock_requests": 134,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 117.932,
+              "packets": 20721,
+              "clock_requests": 134,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 118.935,
+              "packets": 20897,
+              "clock_requests": 135,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 119.947,
+              "packets": 21075,
+              "clock_requests": 135,
+              "late_packets": 0
+            },
+            {
+              "elapsed": 119.99,
+              "packets": 21083,
+              "clock_requests": 135,
+              "late_packets": 0
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "overlap_observation": {
+    "both_receivers_playing": true,
+    "distinct_software_sources": true,
+    "helper_stopped": true,
+    "independent_stop_not_proven": true
+  },
+  "offline_new_probe_tests_passed": 4
+}
