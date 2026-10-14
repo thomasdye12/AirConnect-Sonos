@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <airupnp>
+  <sonos_cache>/var/airplay_sonos/rooms-cache.json</sonos_cache>
   <sonos_api>http://sonos-api.local:5005/zones</sonos_api>
   <sonos_name_prefix></sonos_name_prefix>
   <sonos_name_suffix> (Sonos)</sonos_name_suffix>

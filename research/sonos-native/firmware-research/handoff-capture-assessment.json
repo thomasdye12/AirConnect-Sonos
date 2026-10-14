@@ -1,0 +1,26 @@
+{
+  "earlier": {
+    "packets": 3858,
+    "duration_seconds": 90.8359317779541,
+    "start_utc": "2026-10-14T15:08:15.774866+00:00",
+    "native_destination_7020_packets": 540,
+    "topology": "One readable snapshot groups Connect and Server Room with Connect as coordinator"
+  },
+  "later": {
+    "packets": 1810,
+    "duration_seconds": 21.656171083450317,
+    "start_utc": "2026-10-14T15:09:59.404795+00:00",
+    "topology": "Two readable snapshots show Connect alone and Server Room in a single-member entry with empty Coordinator attribute"
+  },
+  "gap_between_files_seconds": 12.793997222045903,
+  "truncated_packet_count": 0,
+  "readable_speaker_pair_control": "NOTIFY /notify and HTTP 200 responses",
+  "readable_handoff_actions_found": false,
+  "tls_present_elsewhere": true,
+  "assessment": "Useful capture visibility and state evidence, but does not yet establish a successful coordinator handoff or its setup exchange. No captured TLS flow between this particular speaker pair was identified. Missing handoff commands must not be assumed encrypted. Request companion events log before deciding on recapture.",
+  "limits": [
+    "Packet-drop counts not established.",
+    "No end-to-end handoff success or final restoration is established by these files alone.",
+    "TCP inspection uses basic sequence reassembly; broad unrelated traffic not interpreted."
+  ]
+}

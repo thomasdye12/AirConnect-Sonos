@@ -1,0 +1,67 @@
+Receiver-only setup follow-up — 14 October 2026
+
+Result: native playback without the physical Connect remains unproven. A new
+receiver-only handoff path accepts a synthetic source, but does not open the
+native audio receiver. This is not a deployable alternative to the current bridge.
+
+Modern control API
+The installed Play:3 accepted TLS/WebSocket control at port 1443, /websocket/api,
+with v1.api.smartspeaker.audio. Reading groups succeeded after using the full
+household identifier returned by the API. No account credentials were used.
+The receiver rejected virtualLineIn:1/selectSource AIRPLAY with
+ERROR_UNSUPPORTED_NAMESPACE: "v1:virtualLineIn:1 has no actor."
+Controller access therefore does not establish availability of a native input.
+local_api.py is a diagnostic client, not an AirConnect integration.
+
+New handoff finding
+The nearby official 86.10-81100 Play:3 binary dispatches BecomeGroupCoordinator
+at 0x102c84e4. It reads x-sonos-clone-gc at 0x102c852c, converts presence into a
+boolean, and passes that flag to virtual slot 0xd0. That slot resolves to
+0x102bbb70 (through a wrapper on the derived class). The flag skips the ordinary
+transport-state gate at 0x102bbc0c–0x102bbc1c.
+
+The request adapter at 0x102c58b8 reads SharedQueueTrackList and
+PrivateQueueTrackList. The installed speaker's advertised XML instead lists
+CurrentQueueTrackList. Tests with advertised, combined and binary-derived fields
+all returned 402 when transport settings named the synthetic source device.
+These tests do not establish that the XML mismatch itself caused an error.
+
+The binary's line-in branch checks the source identifier in transport settings.
+A nonempty identifier reaches the source-start path at 0x102bc530, including
+peer lookup via 0x10293184 and source transmission start through a virtual call.
+An empty identifier can take the branch at 0x102bc354 instead. Parsing missing
+transport fields may also leave default settings; a success reply alone does not
+prove that the supplied IP or timing port was installed.
+
+Installed-device tests
+With x-sonos-clone-gc: 1, the binary-derived queue fields, no other group members,
+and a transport string ending in an empty source identifier, the speaker returned
+200 to BecomeGroupCoordinator and selected the synthetic x-rincon-stream URI.
+It reported PAUSED_PLAYBACK / OK. Play then returned 701.
+A separate repeat sent silent native PCM before Play. The sender counted one
+packet, then received ECONNREFUSED; there were zero timing requests. No audio was
+verified and the planned ChangeTransportSettings call was not reached in that run.
+This supports that the selected URI did not create a listening native receiver;
+it does not prove how all potential input paths behave.
+
+Scope and restoration
+All tests used only the standalone Server Room receiver, muted. No physical
+Connect control calls were made. Each run verified the original source/metadata,
+transport state, mute, volume and standalone topology after restoration. There
+were no restoration errors. No firmware was installed and production AirConnect
+was not changed.
+
+Next implementation gate
+Establish an accepted command that both configures the native sink endpoint and
+starts its timing/audio receiver. Merely selecting a synthetic URI is insufficient.
+The ordinary ChangeTransportSettings method remains guarded by member transport
+state in the static reference. The newly accepted coordinator state is not proof
+that this requirement has been met. Do not repeat pairing or publish this probe as
+a working Connect-free backend.
+
+Machine-readable evidence: receiver-handoff-followup.json.
+Private raw request/response logs and bounded test scripts are retained in work/linein.
+
+Validation: both changed Python modules compiled; all 10 existing native-lab
+regression tests passed with localhost UDP permissions. These tests do not verify
+independent end-to-end playback on Sonos.

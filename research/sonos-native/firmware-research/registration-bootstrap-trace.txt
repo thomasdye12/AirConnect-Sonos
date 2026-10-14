@@ -1,0 +1,67 @@
+Registration bootstrap investigation — 14 October 2026
+
+Scope: static inspection only of Sonos 57.10-25140 anacapad from trulyspinach/sonos-fenway commit b01d1cf7eed34988e15a8208034d2e5a400efde7. Binary SHA256 2a0e6adb831d995a2863f4307077e2c14c59afc52a43815865f0bc09f8580962. Current physical speakers run 86.10-80260: old implementation evidence does not establish current server behavior.
+
+Registration HTTP call chain
+The registration fetch routine at 0x10270b1c constructs an HTTP object using 0x10275cec (derived vtable 0x104b37bc), prepares X-Sonos-UserId through 0x10270318, and invokes download helper 0x10352d3c. Correction after following the caller-supplied stack flag: this registration call takes the POST branch at 0x10352f40, not the offset-0x4c branch. The nonzero final argument is read at stack+0x1343. The helper dispatches vtable offset 0x50 via 0x10353104 to 0x102758e4, which calls 0x1034a6d0 with the POST string at 0x1047219c. It retries after HTTP status 0x191 (401), calling the object's offset-0x2c method between attempts. The previously traced offset-0x4c branch exists but is not selected by this call.
+
+TLS credential selection
+HTTP connection code at 0x1034a4a4 calls 0x1036a4d8. That routine selects a TLS context using connection flags or a callback. Initialization 0x10346b40 stores the callback at 0x106762f0 and invokes 0x1036a24c. Main initialization at 0x1000cff4 supplies callback 0x10008e04 through 0x1027abd4.
+
+The callback has two roles: returning credential buffer pointers/lengths to initialization, and selecting a context for a hostname at connection time. The hostname predicate at 0x10344484 references lechmere.%s.ws.sonos.com (prod default) and additional configured entries. A positive result selects context 3; otherwise context 0. Predicate also depends on a global enable flag. No credential buffer contents were extracted or included here.
+
+Initialization 0x1036a24c builds four contexts via 0x1036a104. Context 0 receives the credential object returned by 0x1036981c; contexts 1, 2 and 3 receive a null credential argument. Context 3 uses the same trust input as context 0. Within 0x1036a104 the credential installation branch is conditional on that argument being non-null. This supports the existence of a no-client-credential path in this old firmware. It does NOT show that the device-certificate registration endpoint uses it, or that a current virtual device can enroll.
+
+What remains unresolved
+- Exact URL/connection flags used for initial certificate issuance, not only refresh/complete.
+- Registration request authentication and required device assertions.
+- Whether the current service allows a newly generated software identity.
+- Current app's server certificate validation policy.
+
+Live evidence remains separate
+Real speakers explicitly returned unknown_ca to the prototype's self-signed TLS endpoint and quarantined its discovery identity as upnpovertls. The apparent iOS client closed during the server handshake flight without a client Finished or explicit inbound alert, even after TLS 1.2 was selected. The server's outbound decode_error after EOF must not be reported as an iPhone certificate alert.
+
+No cloud registration requests, private credential extraction, speaker resets, or changes to production playback were performed for this investigation. The prototype still has no implemented enrollment or independent native audio setup.
+
+Further findings — registration request and key dependency
+
+1. URL builder 0x10283e70 passes service index 14 to 0x103445d4. The service table at 0x10515a08 has a 12-byte entry for index 14: registration, ws.sonos.com, flags=2. Ordinary defaults yield https://registration.ws.sonos.com plus the path. Configuration overrides and the globally enabled alternate path can change this. The alternate builder 0x1034408c uses sslauth.sonos.com by default, giving registration.sslauth.sonos.com. These are discovered defaults, not proof of the live speaker's configured URL.
+
+2. HTTP metadata callback 0x10275c1c formats X-Sonos-Mac and X-Sonos-Serial from six device bytes, lower- and uppercase hex respectively. This establishes request identity labels, not a valid independent authentication method.
+
+3. Local registration JSON schema at 0x104c0ccc (12-byte records): regState, customerId, householdId, regToken, timeout, macAddr, hmacDigest. Reader 0x102ce7f4 maps customerId to object+8 (17-byte buffer), householdId to +0x19 (33-byte buffer), regToken to +0x3a (65-byte buffer). Dispatcher 0x10288ba8 routes regState=3 to 0x102884e8. The handler checks current state and calls 0x102878f0, which checks customer/household consistency and a nonempty token, before calling 0x102840b4. That job copies customerId and regToken, schedules a callback, and returns 202. Request-body reader 0x10287d00 recognizes x-rincon-signature and verifies it if present; absence is not rejected by that reader alone. Do not infer lack of authorization at the complete endpoint from this subroutine.
+
+4. The downloaded registration object is loaded at 0x10270fd8 through 0x1026d488, which calls 0x1037cb00. Its XML parser recognizes sonos-key-and-cert, certificate and encrypted-private-key. The parser passes the certificate text to 0x1037c370 and encrypted key text to 0x1037c400, followed by a chain of validation callbacks. This is not a traced local CSR generation flow.
+
+5. Encrypted-key processing 0x1037c400 reads a 0x2c4-byte key-material buffer at 0x10676b78. Initialization 0x10376224 fills that same buffer from hal_flash_get_mdp2_wrapper (PLT address 0x1056fd80, verified from ELF relocation and dynamic symbol tables). If that fails, it tries a private.key file under a caller-supplied directory, with a size check of 0x344. The initializer is called during startup at 0x1027ac78. No key bytes were extracted, decrypted, printed, or copied.
+
+Confidence and limits
+High confidence in the call paths, POST selection, JSON field names and flash/file-backed key input. This is strong evidence that the old registration response is consumed using pre-existing key material. It does not yet establish whether that material is unique per device, precisely what the opaque crypto functions do, or what the current cloud service accepts. It is not proof that independently generated key material can or cannot be provisioned through another flow. The contemporary speaker's trust rejection is directly observed and remains a separate fact.
+
+Read-only current-host checks
+Both registration.ws.sonos.com and registration.sslauth.sonos.com accepted TLS 1.2 without a client credential. An unauthenticated GET of / on each returned a generic CloudFront 403 request-blocked page. No registration POST, household ID, account ID, MAC, token, or client key was sent. These results establish network reachability only and do not identify the service's registration authentication policy.
+
+Practical implication
+A local pairing emulator cannot yet be called functional merely by accepting these JSON messages and returning 202. It must obtain an appropriate trusted certificate/key pair and satisfy real household membership checks. Replacing trust checks with simulated success would conceal this unsolved dependency. A new user pairing retry is not justified by these findings alone.
+
+
+Follow-up: challenge authentication resolved
+
+Two additional public libraries from the same pinned firmware were analyzed statically: libflash.so.1 and libsonoscrypto.so.1. Hashes and relocation checks are recorded in registration-crypto-evidence.json.
+
+The request subclass has a 401 handler at 0x10276330. When no registration certificate is available, it recognizes WWW-Authenticate and passes the challenge to 0x10275fe0. That routine calls 0x10275dec, then encodes JSON fields credentials, nonce and keyType for the retry. The credential builder hashes device/challenge data and calls 0x1028380c. That signer loads the key buffer at 0x10676b78 and invokes ZZ0104.
+
+The previously opaque ZZ0104 is resolved in libsonoscrypto at 0x64b8. It calls mbedtls_rsa_rsassa_pkcs1_v15_sign (PLT relocation 0x1d644). Thus this is a private-key signature challenge, not just an account token or MAC-address check. Signing format constants were not extracted into this report, and no signatures were generated or sent.
+
+The key parser ZZ0098 delegates to ZZ0183, which invokes mbedtls_pk_parse_key and mbedtls_rsa_check_privkey. The response decryption path ZZ0051 calls ZZ0075, which invokes mbedtls_rsa_pkcs1_decrypt. The key buffer is therefore an actual RSA private-key input, not merely an unidentified flash field.
+
+The libflash implementation of hal_flash_get_mdp2_wrapper initializes flash access, calls hal_flash_get_mdp2, then closes access. hal_flash_get_mdp2 reads a block and checks header values; it is not a key-generation function. The two direct hal_flash_mdp_write call sites found in anacapad (0x1027a970 and 0x102a03cc) pass through an existing MDP2 buffer while changing other device data. Neither inspected site generates a new registration key. This is a scoped finding, not an exhaustive proof that no manufacturing provisioning mechanism exists elsewhere.
+
+Conclusion now supported with high confidence for firmware 57.10-25140:
+Initial registration includes a challenge requiring a pre-existing RSA private key, and received registration key material is also unwrapped using a pre-existing RSA key. Pairing emulation alone cannot replace this prerequisite. A fresh self-generated key can sign data, but we have not established any service path that authorizes that key for a new virtual identity. The exact current-firmware enrollment sequence still requires current evidence; these old addresses must not be presented as a current protocol specification.
+
+Practical status:
+No current route to independent trusted virtual-player enrollment has been demonstrated. Further discovery retries will not test this prerequisite. Production AirConnect and physical speaker configuration were not changed by this follow-up.
+
+Public documentation cross-check:
+https://docs.sonos.com/docs/connected-home-get-started describes cloud control integrations and Works with Sonos certification; it does not provide a virtual-player certificate provisioning procedure. https://docs.sonos.com/docs/soap-requests-and-responses documents player deviceCert presentation for music services, which is distinct from player enrollment. These sources corroborate the distinction; absence of a documented provisioning procedure is not proof that none exists.

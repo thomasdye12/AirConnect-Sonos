@@ -1,0 +1,58 @@
+{
+  "scope": "Static analysis only; no firmware execution, credential extraction, registration POST, or speaker configuration changes.",
+  "libraries": [
+    {
+      "repository": "https://github.com/trulyspinach/sonos-fenway",
+      "commit": "b01d1cf7eed34988e15a8208034d2e5a400efde7",
+      "path": "firmware/rootfs/57.10-25140/lib/libflash.so.1",
+      "sha256": "69d1a79a17fe0e4194ed15b790efabb2f805e6c077a734ea6d700ecee37870cc",
+      "bytes": 16116
+    },
+    {
+      "repository": "https://github.com/trulyspinach/sonos-fenway",
+      "commit": "b01d1cf7eed34988e15a8208034d2e5a400efde7",
+      "path": "firmware/rootfs/57.10-25140/lib/libsonoscrypto.so.1",
+      "sha256": "f89d45c2a16a573d960d4afe5081e0d0ae67017844681bd7f1f22fdf053d9874",
+      "bytes": 54884
+    }
+  ],
+  "verified_imports": [
+    {
+      "address": "0x1d644",
+      "symbol": "mbedtls_rsa_rsassa_pkcs1_v15_sign"
+    },
+    {
+      "address": "0x1d6c4",
+      "symbol": "mbedtls_rsa_check_privkey"
+    },
+    {
+      "address": "0x1d714",
+      "symbol": "mbedtls_rsa_pkcs1_decrypt"
+    },
+    {
+      "address": "0x1d794",
+      "symbol": "mbedtls_pk_parse_key"
+    }
+  ],
+  "paths": {
+    "challenge_response": [
+      "anacapad 0x10276330: processes WWW-Authenticate after 401",
+      "0x10275fe0: encodes credentials, nonce and keyType",
+      "0x10275dec: prepares digest and calls signer",
+      "0x1028380c: loads key at 0x10676b78 and invokes ZZ0104",
+      "libsonoscrypto ZZ0104 at 0x64b8: invokes mbedtls_rsa_rsassa_pkcs1_v15_sign"
+    ],
+    "key_loading": [
+      "anacapad 0x10376224: loads flash MDP2 via hal_flash_get_mdp2_wrapper; private.key fallback",
+      "libflash 0x23b8/0x2318: initializes flash access, reads block, checks header values",
+      "anacapad 0x1037c400: parses loaded key through ZZ0098",
+      "libsonoscrypto ZZ0098 -> ZZ0183: mbedtls_pk_parse_key and mbedtls_rsa_check_privkey"
+    ],
+    "response_unwrap": [
+      "anacapad 0x1037cb00: parses certificate and encrypted-private-key",
+      "0x1037c400 -> ZZ0051 -> ZZ0075",
+      "libsonoscrypto ZZ0075: mbedtls_rsa_pkcs1_decrypt"
+    ]
+  },
+  "conclusion": "The analyzed legacy registration challenge proves possession of a pre-existing RSA private key. No route provisioning an independent software identity has been established. Applicability of the exact flow to current firmware remains unverified."
+}

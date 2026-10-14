@@ -1,0 +1,25 @@
+Current-branch Sonos firmware analysis — 14 October 2026
+
+Result
+Independent virtual Connect enrollment remains unimplemented. Current-branch static evidence corroborates the pre-existing device-key dependency found in older firmware. It also undermines the old WebSocket virtual-input approach. Neither finding proves that every possible independent native-input integration is impossible.
+
+Source and scope
+The real speaker returned a cached update manifest through read-only CheckForUpdate(CachedOnly=1). No update was started. The official manifest supplies Connect model 17 firmware 86.10-81100. Installed speakers reported 86.10-80260: this is the same branch, NOT the exact installed build. Package and executable hashes, URL, sizes and extracted labels are in modern-firmware-evidence.json. Only the main executable was extracted for static analysis; it was not run or installed.
+
+Registration challenge
+At 0x10541114 the response handler checks HTTP 401 (0x191), compares a parsed header with WWW-Authenticate: at 0x105411c8, and invokes 0x10540d48. That routine constructs a credentials/nonce/keyType response, calling 0x10540b84. Its signing path reaches 0x10a57984 and imported ZZ0104, after 0x10a578c4 loads a 0x2c4-byte key through 0x10a577f0 and imported ZZ0098.
+The initializer at 0x10a57354 calls imported hal_flash_get_mdp2_wrapper, copies the key into the buffer at 0x10d87654, and has a private.key file fallback. No key generation was found in this inspected initializer. The older library inspection identifies ZZ0098 as private-key parsing/checking and ZZ0104 as RSA signing; the corresponding newer library implementation has not been independently extracted and verified.
+Refresh and complete registration endpoint strings remain present, referenced at 0x105b0d3c and 0x105b0da8. Finding the challenge machinery does not establish that every possible enrollment path must use it. No registration requests or device secrets were sent to Sonos cloud services.
+
+Virtual line-in differences
+The type-label table at 0x10c348e4 contains:
+1 airplay; 2 spotify; 3 unknown; 4 unknown; 5 unknown; 6 uri; 7 unknown; 8 tvproxy.
+In the older inspected firmware, 4 and 5 were sonoszp and sonosws. Strings /websocket/vli and ws.vli.sonos.0 are absent from the newer MAIN executable. This does not establish absence from every firmware component or prove that label 'unknown' alone means an enum is rejected: 0x105eae08 accepts the numeric range 1 through 8.
+The current session selector at 0x10606f78 searches nine registered-source entries and calls a source-specific activation method. Failure propagates through 0x10607214, returning 402 at 0x106072cc. The URI-selection path calls that routine at 0x102b1188. This provides a plausible source-activation explanation for the earlier 402, not proof of its exact runtime cause on 86.10-80260.
+
+Next discriminating investigation
+Trace registration of those source entries and the existing URI source (type 6), then identify whether its setup can accept an external PCM producer without a trusted player identity. This is a research question, not an implemented transport. Do not repeat type-5 URI guesses or advertise pairing as working.
+If those inputs require built-in integrations or trusted player credentials, another emulator field will not resolve the problem. A legitimate software-player provisioning mechanism or a separately supported receiver input is then needed.
+
+Current usable result
+Native PCM sender works with physical Connect-assisted setup; the production HTTP AirConnect bridge remains usable. Independent setup, multi-stream native routing, and end-to-end latency targets remain unverified. No speaker reset, firmware change, key cloning, or production replacement occurred in this investigation.

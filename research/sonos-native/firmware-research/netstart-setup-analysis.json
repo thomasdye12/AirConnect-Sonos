@@ -1,0 +1,44 @@
+{
+  "artifact": "netstartd 57.10-25140",
+  "sha256": "aef16b56130277a18009bfe0af1a45ff5e952b5a4e60c8967ad66dfbaf38803d",
+  "executed": false,
+  "udp_port": 6969,
+  "port_callsite": "0x1000c9f8 loads 0x1b39 before socket/bind helper 0x10006bcc",
+  "receive_handler": "0x1000bc38",
+  "dispatch": "0x1000b9fc",
+  "dispatch_targets": {
+    "0": "0x1000bc28",
+    "1": "0x1000bc14",
+    "2": "0x1000baa0",
+    "3": "0x1000bc00",
+    "4": "0x1000baa0",
+    "5": "0x1000bbec",
+    "6": "0x1000baa0",
+    "7": "0x1000bbd8",
+    "8": "0x1000baa0",
+    "9": "0x1000bbc8",
+    "10": "0x1000bbb4",
+    "11": "0x1000baa0",
+    "12": "0x1000baa0",
+    "13": "0x1000bba0",
+    "14": "0x1000bb90",
+    "15": "0x1000bb7c",
+    "16": "0x1000baa0",
+    "17": "0x1000bb68",
+    "18": "0x1000bb58",
+    "19": "0x1000bb44",
+    "20": "0x1000bb30",
+    "21": "0x1000baa0",
+    "22": "0x1000bb1c"
+  },
+  "limitations": "Older firmware. Message names and full wire format not established; no configuration replies implemented.",
+  "message_type_field": {
+    "offset": 1,
+    "width": 1,
+    "evidence": "0x100183b4 checks length > 1, returns byte at offset 1"
+  },
+  "first_byte": {
+    "interpretation": "flags, not established as version",
+    "evidence": "0x10018c58 tests first-byte mask 0x0a"
+  }
+}

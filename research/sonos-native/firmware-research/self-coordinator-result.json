@@ -1,0 +1,8 @@
+{
+  "route": "Receiver self-coordinator with locally generated settings",
+  "result": "SetAVTransportURI returned 402 before transport settings were changed",
+  "restore_errors": [],
+  "source_restored": true,
+  "state_restored": true,
+  "mute_restored": true
+}

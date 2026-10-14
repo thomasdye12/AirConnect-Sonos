@@ -1,0 +1,35 @@
+{
+  "url": "https://update-firmware.sonos.com/firmware/Prod/86.10-81100-v17.2.7-q1e6TdHTIb-RC-2-SP1/86.10-81100-1-17.upd",
+  "bytes": 20705129,
+  "sha256": "ce3733fa8174d948d1e8b05a5680e9d93784c640349d81069b6c8586209fd75f",
+  "version": "86.10-81100",
+  "installed_version": "86.10-80260",
+  "exact_match": false,
+  "executable": {
+    "name": "bin/anacapad",
+    "bytes": 13979472,
+    "sha256": "2f8489f8160a695a9057343faf72c6a91d1051abb30b05d0d1d383b4468d6632"
+  },
+  "virtual_input_labels": {
+    "1": "airplay:",
+    "2": "spotify:",
+    "3": "unknown:",
+    "4": "unknown:",
+    "5": "unknown:",
+    "6": "uri:",
+    "7": "unknown:",
+    "8": "tvproxy:"
+  },
+  "absent_from_main_executable": [
+    "/websocket/vli",
+    "ws.vli.sonos.0"
+  ],
+  "challenge_chain": [
+    "0x10541114: response handler checks status 401 and WWW-Authenticate header",
+    "0x10540d48: builds credentials/nonce/keyType response",
+    "0x10540b84: prepares signing input",
+    "0x10a57984: invokes ZZ0104 after loading key",
+    "0x10a578c4: loads key through 0x10a577f0 and invokes ZZ0098",
+    "0x10a57354: initializes key buffer through hal_flash_get_mdp2_wrapper, with private.key file fallback"
+  ]
+}

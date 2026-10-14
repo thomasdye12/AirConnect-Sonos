@@ -1,0 +1,505 @@
+{
+  "installed_firmware": "86.10-80260",
+  "static_reference_firmware": "86.10-81100",
+  "modern_api": {
+    "handshake_status": "HTTP/1.1 101 Switching Protocols",
+    "command": "virtualLineIn:1/selectSource AIRPLAY",
+    "restoration": {
+      "transport": true,
+      "mute": true,
+      "volume": true,
+      "source": true,
+      "standalone": true
+    },
+    "restore_errors": [],
+    "result": {
+      "success": false,
+      "body": {
+        "_objectType": "globalError",
+        "errorCode": "ERROR_UNSUPPORTED_NAMESPACE",
+        "reason": "v1:virtualLineIn:1 has no actor."
+      }
+    }
+  },
+  "handoff_tests": [
+    {
+      "variant": "clone-coordinator-advertised-fields",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 500,
+          "upnp_error": 402
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "physical_connect_control_calls": 0
+    },
+    {
+      "variant": "clone-coordinator-combined-fields",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 500,
+          "upnp_error": 402
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "physical_connect_control_calls": 0
+    },
+    {
+      "variant": "clone-coordinator-firmware-fields",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 500,
+          "upnp_error": 402
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "physical_connect_control_calls": 0
+    },
+    {
+      "variant": "clone-coordinator-source-less-setup",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "Play",
+          "http_status": 500,
+          "upnp_error": 701
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "physical_connect_control_calls": 0,
+      "selected_transport": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      }
+    },
+    {
+      "variant": "clone-coordinator-probe",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 1,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "physical_connect_control_calls": 0,
+      "selected_transport": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "sender_error": "UDP send failed with ECONNREFUSED after one packet; no timing requests observed."
+    }
+  ],
+  "independent_native_playback_verified": false,
+  "validation": {
+    "python_compile": "passed for soap.py and local_api.py",
+    "native_lab_regression_tests": {
+      "passed": 10,
+      "failed": 0,
+      "scope": "codec, localhost UDP and independent native sender sessions; not end-to-end independent Sonos audio"
+    }
+  }
+}

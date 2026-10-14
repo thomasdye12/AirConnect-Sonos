@@ -1,0 +1,23 @@
+Group handoff trace in Play:3 86.10-81100 (nearby, not exact installed build)
+
+The group-join helper at 0x10352320 looks up peer records via 0x1069e1c0 and copies their connection descriptors with 0x1069b868. It then creates an outgoing client context (0x10647d1c) and invokes 0x1063c5e0 at 0x103525b4. Success/failure affects subsequent group transition. This is a concrete outgoing control dependency to correlate with capture, not yet a proof of TLS requirements for the entire path.
+Capture should preserve full speaker-to-speaker traffic and local-controller SOAP logs. A verified coordinator change is necessary: merely starting another room does not establish handoff. Encrypted packet contents cannot be assumed recoverable from having the firmware executable.
+
+AddMember path traced offline
+- 0x1063c5e0 constructs GroupManagement:1 AddMember. MemberID and BootSeq are inputs; transport settings, URI, group ID, volume-reset state and volume URI are outputs, matching the advertised XML service.
+- 0x1063c654 calls policy selector 0x10641c88 with argument zero; selection chooses the alternate control URL when policy is nonzero and that URL is present. The provider is registered at 0x105e53b0. Its vtable slot +8 resolves to 0x105e5fa8 -> 0x105e5f48 -> 0x10ac1cd8. No claim that changing a descriptor disables this policy.
+- Before issuing AddMember, 0x10352320 uses peer lookup 0x1069e1c0. That lookup skips records for which 0x106b0f98 returns nonzero; the predicate is record field +0x710 != 1. Classification at 0x106b0a90 considers protocol compatibility, verification level and policy. Associated messages include HTTPS required, secure registration required and unknown user. Full enum meanings and all configuration inputs have not been reconstructed.
+- Coordinator-side handler 0x1034e888 checks member validity, groupability, satellite status, compatibility and BootSeq before installing membership. Explicit log-associated errors include 402 invalid argument, 800 inability to retrieve compatibility information, 804 satellite, 806 incompatible member, 803 out-of-sync boot sequence and 808 ungroupable player. These are code-path observations, not newly observed live responses.
+- The diagnostic label Insecure UPnP Allowed reaches getter 0x105b1620, which reads boolean property 0x30001 through an abstract provider unless an earlier override applies. No supported user-facing setter or legitimate software-player enrollment path has been established. No configuration was changed.
+All of this work was offline while the separate capture was running.
+
+Completed capture correlation (new 9,942-packet experiment)
+See completed-handoff-analysis.txt and completed-handoff-evidence.json. A real
+coordinator handoff is now verified. Speaker-pair visibility is one direction
+only; TLS application data is present during the transition. No decrypted
+AddMember or BecomeGroupCoordinator payload is available.
+Additional static trace: helper 0x1035139c calls BecomeGroupCoordinatorAndSource
+builder 0x106394e4 at 0x103516d4, or BecomeGroupCoordinator builder 0x106390b0
+at 0x103518cc. Both use policy selector 0x10641c88 with argument zero.
+RemoveMember builder 0x1063c074 uses argument one; its observed HTTP request
+does not establish that handoff/join operations can use HTTP for a synthetic peer.

@@ -59,6 +59,7 @@ void SaveConfig(char *name, void *ref, bool full) {
 	XMLUpdateNode(doc, root, false, "max_players", "%d", (int) glMaxDevices);
 	XMLUpdateNode(doc, root, false, "binding", glBinding);
 	XMLUpdateNode(doc, root, false, "sonos_api", "%s", glSonosAPI);
+	XMLUpdateNode(doc, root, false, "sonos_cache", "%s", glSonosCache);
 	XMLUpdateNode(doc, root, false, "sonos_name_prefix", "%s", glSonosPrefix);
 	XMLUpdateNode(doc, root, false, "sonos_name_suffix", "%s", glSonosSuffix);
 	XMLUpdateNode(doc, root, false, "ports", "%hu:%hu", glPortBase, glPortRange);
@@ -164,6 +165,7 @@ static void LoadGlobalItem(char *name, char *val) {
 	if (!strcmp(name, "max_players")) glMaxDevices = atol(val);
 	if (!strcmp(name, "binding")) strcpy(glBinding, val);
 	if (!strcmp(name, "sonos_api")) snprintf(glSonosAPI, sizeof(glSonosAPI), "%s", val);
+	if (!strcmp(name, "sonos_cache")) snprintf(glSonosCache, sizeof(glSonosCache), "%s", val);
 	if (!strcmp(name, "sonos_name_prefix")) snprintf(glSonosPrefix, sizeof(glSonosPrefix), "%s", val);
 	if (!strcmp(name, "sonos_name_suffix")) snprintf(glSonosSuffix, sizeof(glSonosSuffix), "%s", val);
 	if (!strcmp(name, "ports")) sscanf(val, "%hu:%hu", &glPortBase, &glPortRange);
@@ -256,6 +258,5 @@ void *LoadConfig(char *name, tMRConfig *Conf) {
 
 	return doc;
 }
-
 
 

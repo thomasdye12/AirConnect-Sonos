@@ -125,3 +125,19 @@ tests/bin/
 
 # Local release artifacts are uploaded separately
 /release/
+
+# Private lab state, media, captures and generated files
+__pycache__/
+*.pyc
+*.pcap
+*.pcapng
+*.har
+*.ips
+*.wav
+*.pem
+*.key
+/research/sonos-native/decoded/
+/research/sonos-native/virtual-connect/work/
+/work/
+
+!tests/*.py

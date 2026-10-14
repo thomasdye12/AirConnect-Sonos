@@ -1,0 +1,19 @@
+{
+  "firmware": "86.10-80260",
+  "test": "Receiver-only local sonosws virtual line-in selection; source type 5 derived from firmware 57.10-25140",
+  "result": "SetAVTransportURI rejected with UPnP 402; no audio sent",
+  "websocket_before": "HTTP 404",
+  "connect_setup_calls": 0,
+  "enrollment_changes": 0,
+  "restore_errors": [],
+  "verification": {
+    "source_uri_restored": true,
+    "transport_state_restored": true,
+    "mute_restored": true
+  },
+  "limits": [
+    "The cause of 402 is not identified from the response alone.",
+    "This does not prove every virtual-input session API is unusable.",
+    "No successful Connect-free native playback was demonstrated."
+  ]
+}

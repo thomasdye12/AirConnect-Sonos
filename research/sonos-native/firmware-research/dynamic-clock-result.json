@@ -1,0 +1,25 @@
+{
+  "test": "Dynamic clock port on real receiver, muted silence",
+  "native_stats": {
+    "packets": 527,
+    "clock_requests": 6,
+    "late_packets": 0
+  },
+  "receiver_during_test": {
+    "CurrentTransportState": "PLAYING",
+    "CurrentTransportStatus": "OK",
+    "CurrentSpeed": "1"
+  },
+  "restoration": {
+    "source": true,
+    "state": true,
+    "mute": true,
+    "volume": true,
+    "receiver_standalone": true,
+    "connect_standalone": true
+  },
+  "restore_errors": [],
+  "still_requires_connect_setup": true,
+  "audible_validation": false,
+  "simultaneous_physical_receivers_tested": false
+}

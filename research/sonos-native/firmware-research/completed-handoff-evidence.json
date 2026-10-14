@@ -1,0 +1,604 @@
+{
+  "capture": "sonos-group-handoff.pcapng",
+  "sha256": "91fa0acceda1238a5e56d25c8c9dc804faaf1e5b308e4718bfaab2a8219070f9",
+  "packets": 9942,
+  "start_utc": "2026-10-14T15:16:21.245581+00:00",
+  "end_utc": "2026-10-14T15:17:13.597529+00:00",
+  "truncated_packets": 0,
+  "speaker_direction_counts": {
+    "Airplay Connect -> Server Room": 2108
+  },
+  "missing_direction": "Server Room -> Airplay Connect (zero observed packets)",
+  "timeline": [
+    {
+      "first_payload_utc": "2026-10-14T15:16:36.153234+00:00",
+      "protocol": "topology",
+      "groups": [
+        {
+          "coordinator": "Airplay Connect",
+          "members": [
+            "Airplay Connect"
+          ]
+        },
+        {
+          "coordinator": "Server Room",
+          "members": [
+            "Server Room"
+          ]
+        }
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:38.216339+00:00",
+      "last_payload_utc": "2026-10-14T15:16:38.216426+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46368,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-29.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:39.461834+00:00",
+      "last_payload_utc": "2026-10-14T15:16:39.480622+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1843,
+      "to": "Server Room",
+      "destination_port": 45307,
+      "private_reassembly": "tcp-54.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 85
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 771
+        },
+        {
+          "type": 21,
+          "record_version": "0303",
+          "length": 26
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:39.477995+00:00",
+      "last_payload_utc": "2026-10-14T15:16:39.501951+00:00",
+      "from": "Airplay Connect",
+      "source_port": 52125,
+      "to": "Server Room",
+      "destination_port": 1843,
+      "private_reassembly": "tcp-57.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 2112
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 279
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:40.028134+00:00",
+      "last_payload_utc": "2026-10-14T15:16:40.028134+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34779,
+      "private_reassembly": "tcp-59.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:41.390792+00:00",
+      "last_payload_utc": "2026-10-14T15:16:41.390792+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34808,
+      "private_reassembly": "tcp-61.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:41.936046+00:00",
+      "last_payload_utc": "2026-10-14T15:16:41.998915+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1843,
+      "to": "Server Room",
+      "destination_port": 45366,
+      "private_reassembly": "tcp-62.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 85
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 111
+        },
+        {
+          "type": 21,
+          "record_version": "0303",
+          "length": 26
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:42.593724+00:00",
+      "protocol": "topology",
+      "groups": [
+        {
+          "coordinator": "Airplay Connect",
+          "members": [
+            "Airplay Connect",
+            "Server Room"
+          ]
+        }
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:42.618850+00:00",
+      "last_payload_utc": "2026-10-14T15:16:42.618863+00:00",
+      "from": "Mac",
+      "source_port": 61914,
+      "to": "Airplay Connect",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-67.bin",
+      "protocol": "HTTP",
+      "start_line": "POST /MediaRenderer/AVTransport/Control HTTP/1.1",
+      "actions": [
+        "DelegateGroupCoordinationTo"
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:42.705283+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.303685+00:00",
+      "from": "Airplay Connect",
+      "source_port": 52128,
+      "to": "Server Room",
+      "destination_port": 1843,
+      "private_reassembly": "tcp-65.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 2112
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 1709
+        },
+        {
+          "type": 21,
+          "record_version": "0303",
+          "length": 26
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.314850+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.314850+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46394,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-72.bin",
+      "protocol": "HTTP",
+      "start_line": "UNSUBSCRIBE /MediaRenderer/RenderingControl/Event HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.323451+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.390736+00:00",
+      "from": "Airplay Connect",
+      "source_port": 52130,
+      "to": "Server Room",
+      "destination_port": 1843,
+      "private_reassembly": "tcp-73.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 2112
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 712
+        },
+        {
+          "type": 21,
+          "record_version": "0303",
+          "length": 26
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.369323+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.375561+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1843,
+      "to": "Server Room",
+      "destination_port": 45371,
+      "private_reassembly": "tcp-74.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 85
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 183
+        },
+        {
+          "type": 21,
+          "record_version": "0303",
+          "length": 26
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.441798+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.501206+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Mac",
+      "destination_port": 61914,
+      "private_reassembly": "tcp-76.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.622589+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.622589+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46403,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-86.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:45.736517+00:00",
+      "last_payload_utc": "2026-10-14T15:16:45.736517+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34842,
+      "private_reassembly": "tcp-93.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:46.454458+00:00",
+      "last_payload_utc": "2026-10-14T15:16:46.454796+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46432,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-117.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:46.615600+00:00",
+      "last_payload_utc": "2026-10-14T15:16:46.615600+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34871,
+      "private_reassembly": "tcp-125.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:47.081256+00:00",
+      "last_payload_utc": "2026-10-14T15:16:47.090776+00:00",
+      "from": "Airplay Connect",
+      "source_port": 52189,
+      "to": "Server Room",
+      "destination_port": 1843,
+      "private_reassembly": "tcp-141.bin",
+      "protocol": "TLS",
+      "records": [
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 2112
+        },
+        {
+          "type": 20,
+          "record_version": "0303",
+          "length": 1
+        },
+        {
+          "type": 22,
+          "record_version": "0303",
+          "length": 40
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 273
+        },
+        {
+          "type": 23,
+          "record_version": "0303",
+          "length": 1125
+        }
+      ],
+      "unparsed_bytes": 0
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:16:48.527259+00:00",
+      "protocol": "topology",
+      "groups": [
+        {
+          "coordinator": "Server Room",
+          "members": [
+            "Airplay Connect",
+            "Server Room"
+          ]
+        }
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.721810+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.721848+00:00",
+      "from": "Mac",
+      "source_port": 61933,
+      "to": "Airplay Connect",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-154.bin",
+      "protocol": "HTTP",
+      "start_line": "POST /MediaRenderer/AVTransport/Control HTTP/1.1",
+      "actions": [
+        "BecomeCoordinatorOfStandaloneGroup"
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.786751+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.786751+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46455,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-149.bin",
+      "protocol": "HTTP",
+      "start_line": "POST /GroupManagement/Control HTTP/1.1",
+      "actions": [
+        "RemoveMember"
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.792188+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.792188+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34887,
+      "private_reassembly": "tcp-150.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.861841+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.863830+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Mac",
+      "destination_port": 61933,
+      "private_reassembly": "tcp-155.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.879143+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.879183+00:00",
+      "from": "Mac",
+      "source_port": 61934,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-164.bin",
+      "protocol": "HTTP",
+      "start_line": "POST /MediaRenderer/AVTransport/Control HTTP/1.1",
+      "actions": [
+        "BecomeCoordinatorOfStandaloneGroup"
+      ]
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:08.963683+00:00",
+      "last_payload_utc": "2026-10-14T15:17:08.963683+00:00",
+      "from": "Server Room",
+      "source_port": 1400,
+      "to": "Mac",
+      "destination_port": 61934,
+      "private_reassembly": "tcp-165.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:09.083196+00:00",
+      "last_payload_utc": "2026-10-14T15:17:09.083196+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46463,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-166.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:09.404801+00:00",
+      "last_payload_utc": "2026-10-14T15:17:09.404801+00:00",
+      "from": "Airplay Connect",
+      "source_port": 1400,
+      "to": "Server Room",
+      "destination_port": 34903,
+      "private_reassembly": "tcp-179.bin",
+      "protocol": "HTTP",
+      "start_line": "HTTP/1.1 200 OK",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:09.996101+00:00",
+      "last_payload_utc": "2026-10-14T15:17:09.996198+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46492,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-199.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:11.184504+00:00",
+      "last_payload_utc": "2026-10-14T15:17:11.184598+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46524,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-248.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:12.327916+00:00",
+      "last_payload_utc": "2026-10-14T15:17:12.327996+00:00",
+      "from": "Airplay Connect",
+      "source_port": 46555,
+      "to": "Server Room",
+      "destination_port": 1400,
+      "private_reassembly": "tcp-279.bin",
+      "protocol": "HTTP",
+      "start_line": "NOTIFY /notify HTTP/1.1",
+      "actions": []
+    },
+    {
+      "first_payload_utc": "2026-10-14T15:17:13.303371+00:00",
+      "protocol": "topology",
+      "groups": [
+        {
+          "coordinator": "Airplay Connect",
+          "members": [
+            "Airplay Connect"
+          ]
+        },
+        {
+          "coordinator": "Server Room",
+          "members": [
+            "Server Room"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Only one direction of speaker-pair traffic was observed.",
+    "No TLS decryption; record sizes/timing do not identify SOAP methods.",
+    "Timeline times mark first/last observed payloads per directional TCP flow, not individual TLS operations.",
+    "Interface duplication and retransmissions may affect packet counts.",
+    "TCP reconstruction is basic and does not separate reused connection tuples."
+  ]
+}

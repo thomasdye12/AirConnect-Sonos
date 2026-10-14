@@ -1,0 +1,37 @@
+Offline firmware findings — 14 October 2026
+
+The repository contains both .upd packages and already extracted filesystem
+images. Downloaded only the stock 57.10-25140 /opt/bin/anacapad executable,
+not a custom flashed image. Provenance and SHA-256 are recorded separately.
+The download is a 5,636,472-byte stripped PowerPC ELF executable. This validates
+its usefulness as an analysis artifact, NOT authenticity, flash safety or
+compatibility with the live 86.10-80260 firmware.
+
+Static evidence
+1. The function starting at 0x100ffc50 references ChangeTransportSettings and
+   its related diagnostic strings. At 0x100ffcd0 it checks an incoming argument
+   against zero and can return 0x2ce (718, consistent with InstanceID handling).
+   At 0x100ffd18 it loads a field at object offset 0x54f4. If nonzero, the path
+   returns 0x320 (800). This occurs before the call at 0x100ffd38 that handles
+   the incoming transport settings. The field's semantic meaning is NOT yet
+   established. This is a concrete non-certificate-specific explanation to
+   investigate; it does not prove what triggered error 800 on current firmware.
+2. In the load-line-in-related code near 0x101021c4, separate branches reference
+   'player not found' (string at 0x1047f0c8) and 'player does not have line-in'
+   (0x1047f0dc). Recognition and advertised capabilities are distinct checks.
+3. Other useful strings include source/topology compatibility checks, a
+   /websocket/vli endpoint, StartTransmissionToGroup failure, and transport URI
+   rejection. Their presence is a research lead, not proof of a usable API.
+
+Method
+ELF metadata inspected, printable strings indexed, and PowerPC instructions
+statically disassembled with Capstone. No firmware code was executed. No
+speaker configuration or firmware was changed during this investigation.
+No private keys from the repository were downloaded.
+
+Next investigation
+Identify the 0x54f4 object's field through its writers and adjacent behaviour;
+trace line-in source lookup and capability validation; then compare that model
+with live device discovery and our minimal emulator. Find a closer firmware
+version if older and current behaviour diverge. Authentication remains a
+separate unresolved issue; certificate requests seen live are still real.

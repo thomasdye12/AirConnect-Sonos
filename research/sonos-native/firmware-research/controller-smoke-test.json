@@ -1,0 +1,41 @@
+{
+  "release": "v1.12.4-tds2",
+  "test": "eight-second streaming clip through companion controller",
+  "silent": true,
+  "summary": {
+    "http": [
+      {
+        "at": 0.7571,
+        "range": null,
+        "bytes_sent": 1434132,
+        "first_byte_at": 0.7582,
+        "error": "[Errno 32] Broken pipe"
+      }
+    ],
+    "verified": {
+      "transport": true,
+      "mute": true,
+      "volume": true,
+      "source": true,
+      "standalone": true
+    },
+    "restore_errors": [],
+    "states": [
+      {
+        "at": 2.1349,
+        "states": [
+          "ACTIVE"
+        ]
+      },
+      {
+        "at": 8.783,
+        "states": [
+          "DISMISSED"
+        ]
+      }
+    ],
+    "paced_stream_test_passed": true,
+    "audible": false,
+    "latency_measured": false
+  }
+}

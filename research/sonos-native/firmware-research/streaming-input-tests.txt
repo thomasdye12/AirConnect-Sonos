@@ -1,0 +1,84 @@
+Independent streaming input tests — 14 October 2026
+
+Result
+A separate local audioClip API path accepted real-time-paced WAV streams on two
+speakers without using a physical Connect. Silent transport tests succeeded for
+finite streams, an unknown HTTP-length stream, explicit cancellation, and two
+concurrently launched independent room streams. This is an experimental HTTP
+input path, not the requested native UDP setup and not an integrated AirPlay backend.
+No audible-quality or acoustic-latency claim can be made from silent status tests.
+
+Native investigation
+- Direct selection of the registered type-2 virtual-input URI returned 402.
+- A type-2 virtual-input coordinator handoff with an 84-character serialized
+  state snapshot also returned 402. The state layout was derived from the nearby
+  firmware serializer/parser at 0x105f76a0 and 0x105f7754. This rejects the tested
+  synthetic state; it does not prove an active provider session cannot hand off.
+- The accepted source-less line-in handoff was repeated, followed immediately by
+  ChangeTransportSettings, before any UDP writes. That command returned 800.
+  This completes the check that the earlier UDP error prevented from running.
+- No native audio packets were sent in these three runs. All restoration checks
+  passed: source/metadata, stopped state, mute, volume and standalone topology.
+
+HTTP audioClip results
+- 12-second finite WAV: accepted; full 2,116,800 PCM bytes sent; ACTIVE then DONE.
+- 40-second finite WAV: accepted; full 7,056,000 PCM bytes sent; ACTIVE then DONE.
+- Unknown HTTP length: no Content-Length header, large placeholder WAV data size,
+  paced PCM. Accepted and ACTIVE; explicitly cancelled after 15 seconds. The
+  cancellation succeeded and a DISMISSED event followed. This is a bounded test
+  of stream handling, not proof of unlimited duration or long-term stability.
+- Two processes were launched concurrently, targeting Server Room and Utility
+  Room through different local HTTP servers. Both accepted their own clip and
+  reported ACTIVE. Server Room was cancelled at 12 seconds; Utility Room sent
+  4,431,168 PCM bytes before cancellation at 25 seconds. Both cancellations
+  succeeded and both streams reported DISMISSED. A later independent observer
+  saw only the final states and provides no additional overlap evidence.
+- A Broken pipe from the HTTP writer after successful cancellation is expected:
+  the speaker closes its stream. No restoration errors occurred in any run.
+- A cancellation request after the first finite test had already reported DONE
+  returned ERROR_AUDIO_CLIP_ID_NOT_FOUND. Subsequent finite tests skip cancellation
+  after observing their own terminal event.
+
+Scope
+All content was silence and all receivers were muted during tests. The user asked
+to continue silently because listening was unavailable. Both room receivers were
+stopped and standalone before testing. Both were verified restored afterward.
+No Connect was controlled and production AirConnect was not modified.
+
+Timing limits
+ACTIVE events arrived roughly 1.3–1.6 seconds after the first HTTP bytes. This is
+notification timing, not measured time to audible output or end-to-end AirPlay
+latency. DONE and DISMISSED events likewise do not demonstrate sample-perfect
+playback. Real audio and an acoustic timing measurement remain necessary.
+
+Code added or improved
+local_api.py retains asynchronous events received while waiting for command replies.
+Its frame parser now preserves partially received frames and fragmented messages
+across polling timeouts. Tests cover every byte boundary of an extended-length
+frame, command/event interleaving, ping handling during fragmentation and rejection
+of oversized frames before payload reads.
+clip_stream_probe.py provides a bounded reusable CLI, defaults to muted silence,
+checks stopped/standalone preconditions, uses a separate HTTP server per instance,
+cancels streaming sessions, verifies restoration, and reports failed tests with a
+nonzero exit status. --audible requires an explicit WAV input; it was not used.
+
+Example, from the native-lab directory (use a private output path):
+python3 clip_stream_probe.py --receiver SPEAKER_IP --receiver-id SPEAKER_UUID \
+  --seconds 15 --streaming --output PRIVATE_TEST_LOG.json
+
+Remaining work
+The native UDP receiver still needs an accepted activation path. For the separate
+HTTP candidate: verify audible continuous playback and actual latency, then assess
+AirPlay PCM integration, stream restart/flush, volume semantics, metadata/artwork,
+long-term duration limits and concurrency at the intended number of rooms. The
+prototype does not implement those features and should not replace production yet.
+
+References
+Official API describes MP3/WAV clip URLs and asynchronous scheduling:
+https://docs.sonos.com/reference/audioclip-loadaudioclip-playerid
+Public local WebSocket wire-format reference:
+https://github.com/jjlawren/sonos-websocket
+Detailed sanitized results: streaming-input-tests.json.
+
+Validation: all 14 lab regression tests passed, including localhost UDP tests;
+both changed diagnostic modules compiled successfully.

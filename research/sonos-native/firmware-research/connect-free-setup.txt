@@ -1,0 +1,82 @@
+Connect-free setup investigation — 14 October 2026
+
+Status: NOT achieved. Native UDP music playback remains proven only after
+setup through the real Connect. Production AirConnect is unchanged.
+
+New live findings
+1. Generated transport settings and a synthetic coordinator UUID, with no
+   control call to the Connect: SetAVTransportURI x-rincon:<synthetic UUID>
+   returned UPnP 501. No audio was sent.
+2. Corrected virtual discovery: preserve default device XML namespace,
+   remove stale secure endpoint declarations and real extension identity,
+   repeat advertisements and send them directly to the receiver as well.
+   Server Room fetched the descriptor. Its topology included our UUID under
+   QuarantinedDevices with QuarantineReason="upnpovertls", not an active group.
+   The previous boolean "synthetic_in_topology" was insufficient evidence of
+   acceptance. The probe now records the exact device attributes instead.
+3. ChangeCoordinator from standalone Server Room to the synthetic identity
+   returned UPnP 800. No audio was sent.
+4. GET Upgrade /websocket/vli with ws.vli.sonos.0 on Server Room ports 1400
+   and 1443 returned HTTP 404. This does not establish that every virtual-input
+   route is absent; the older firmware may differ or require session setup.
+5. Added TLS endpoints on 1443 and 1843 using a newly generated, self-signed
+   experimental certificate. Server Room and other discovering speakers
+   connected to 1843 and rejected it with TLS alert unknown_ca. The synthetic
+   device remained quarantined and group setup returned 501.
+
+Conclusion
+The emulated-device route encounters an observed certificate trust check on
+current firmware 86.10-80260. A listener and self-signed certificate do not
+satisfy it. This is stronger evidence than the earlier TLS handshake alone.
+It does not prove all possible Connect-free control routes are impossible.
+No genuine Sonos private keys were downloaded, copied or used. No firmware
+was flashed, no trust setting changed, and no production service replaced.
+All bounded playback probes reported no restoration errors. Discovery
+advertisements were withdrawn and experimental network listeners closed.
+
+Remaining research
+- Trace an independently usable virtual-input session API on current firmware,
+  including session creation, endpoint direction and audio framing. The old
+  binary contains x-sonos-vli and /websocket/vli, but strings are not a working API.
+- Determine whether there is a supported enrollment path for a software source
+  or another control path that leaves the genuine receiver as coordinator.
+- Do not claim success based on topology presence, HTTP 200, or packet sends:
+  require clock exchanges, clean audible output, and no Connect setup calls.
+- After independent setup works, validate separate simultaneous AirPlay streams
+  to different rooms. The user explicitly wants independent sessions, not
+  one shared multiroom stream.
+
+Research code
+probe.py --synthetic-coordinator --group-member uses locally generated settings;
+--direct-change selects the alternate ChangeCoordinator experiment.
+discovery_probe.py --tls-cert/--tls-key serves experimental secure endpoints.
+These are bounded diagnostic modes, not a deployable Connect-free backend.
+Certificates, private keys, full topology and private network logs stay in work/.
+
+Controller retry diagnostics
+The 14:51 attempt made 24 TLS 1.3 ClientHello exchanges from the suspected
+controller. Server sent Certificate, CertificateVerify and Finished; client
+closed without a recorded client Finished or inbound TLS alert. The logged
+DECODE_ERROR was written by our server after EOF, NOT sent by the iPhone.
+No non-synthetic UDP setup messages were observed on this Mac's port 6969.
+Absence on this routed network does not establish that the app sent none.
+Both live Connect and Play:3 negotiate TLS 1.2 on 1443; emulator capped to TLS
+1.2 to test that difference. Local TLS handshake verified after restart.
+Certificate remains self-signed; successful iOS connection is unverified.
+
+TLS 1.2 retry — 14:56–14:57
+18 remote ClientHello attempts were recorded. Server selected TLS 1.2 and sent
+ServerHello, Certificate, ServerKeyExchange and ServerHelloDone. No remote
+ClientKeyExchange, Finished or application request followed; connections ended
+with EOF. DECODE_ERROR is an outbound server alert after the disconnect, not a
+client-supplied reason. User saw "connection was lost".
+Matching TLS 1.2 was insufficient to resolve the problem. This is not evidence
+of progress into pairing. Certificate/identity validation remains a leading
+hypothesis, but no client error explains the rejection. No new controller
+retries should be requested without a material change or new diagnostic need.
+
+Further receiver-only VLI test
+Traced x-sonos-vli URI generation/parser and source selection in firmware 57.10-25140. The source-type naming table maps type 5 to sonosws. Tested a URI naming Server Room's own UUID and type 5, with playback muted and snapshot/finally restoration. Current firmware 86.10-80260 rejected SetAVTransportURI with UPnP 402. Before selection /websocket/vli returned HTTP 404. No Connect setup call and no audio were sent. Restoration reported no errors; source URI, stopped transport state and mute were verified against snapshot. See receiver-only-vli-result.json. Exact rejection reason remains unknown; old firmware source selection can return 402 at several points.
+
+Current registration diagnostics
+GET /status/device_account and /status/device_account/registration returned empty ZPSupportInfo documents. HTTP 200 here is not evidence of an available registration API. The public status menu exposes only basic diagnostics.

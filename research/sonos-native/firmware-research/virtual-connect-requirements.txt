@@ -1,0 +1,85 @@
+Virtual Connect enrollment requirements — investigation, 14 October 2026
+
+Outcome
+A virtual Connect pairing flow is a plausible architecture, not yet a working
+implementation. No successful enrollment or Connect-free native audio session
+has been demonstrated. More discovery emulation alone will not fix the observed
+certificate-chain rejection. No pairing/reset of an existing player was done.
+
+What we verified on the current speaker
+- The virtual identity is discovered but quarantined: upnpovertls.
+- The peer rejects the experimental self-signed TLS certificate: unknown_ca.
+- A read-only TLS connection to Server Room port 1443 obtained its PUBLIC
+  certificate. Issuer: Sonos Device Authentication Root CA, Sonos Devices,
+  Sonos, Inc., Santa Barbara, California, US.
+- That public certificate contains urn:sonos:device, urn:sonos:hhid and
+  urn:sonos:user fields. Values and raw certificate remain in private work/.
+- Port 1843 reset this attempt. Do not assume it serves an identical certificate
+  or infer its full trust policy from the public certificate on port 1443.
+- Advertised DeviceProperties/SystemProperties/GroupManagement SOAP schemas
+  do not expose an obvious device-enrollment action. Music-service AddAccount
+  actions are not speaker enrollment.
+
+What older firmware establishes
+Static artifact: anacapad 57.10-25140, provenance recorded separately.
+1. Registration certificate manager construction at 0x10283c88 references
+   regdevicecert and regcert; its vtable has a refresh URL builder at
+   0x10283f60 and certificate-fetch method at 0x10270b1c.
+2. URL builders reference /product/v2/households/%s/players?action=refresh and
+   action=complete&token=%s. This is evidence of a token-bearing registration
+   workflow, not proof that a user token alone authorizes a synthetic device.
+3. The fetch path builds X-Sonos-UserId and invokes its network helper.
+   Bootstrap authentication requirements of that helper are not fully traced.
+   The nearby mutualssl diagnostic is suggestive, not sufficient proof of a
+   mandatory factory credential at initial enrollment.
+4. Certificate validation near 0x10340194 builds checks for urn:sonos:device,
+   urn:sonos:hhid and urn:sonos:user. The manager also names MISMATCH_ISSUER,
+   MISMATCH_HHID and MISMATCH_USER outcomes.
+5. Secure household server credentials are updated by a separate path near
+   0x1028eeb4. This supports treating enrollment and TLS identity as connected
+   but distinct concerns.
+Do not assume these addresses or all behaviours match current firmware.
+
+Implementation requirements / acceptance gates
+A. Discovery and unpaired state:
+   stable synthetic UUID; device descriptor and capabilities; setup-mode
+   announcements understood by the controller. Success means the Sonos app
+   offers Add Product, not merely an entry in QuarantinedDevices.
+B. Proof of user intent:
+   implement the actual controller/device challenge and confirmation exchange
+   required by the relevant setup version. Button/PIN/chime behaviour is not
+   yet mapped; do not invent the protocol or claim a UI button suffices.
+C. Enrollment and trust bootstrap (critical unresolved gate):
+   establish what credentials authenticate certificate issuance and whether
+   independently generated software keys can be enrolled by an account owner.
+   Success requires a trusted certificate bound to the intended virtual device,
+   household and account, with a matching locally held private key. Displaying
+   the same IDs in discovery does not provide this binding.
+D. Household member operation:
+   secure control endpoints, event subscriptions/notifications, topology and
+   membership state, plus source capability/state reporting. Successful TLS
+   alone is insufficient; the virtual source must become an accepted member.
+E. Line-in transport:
+   implement start/stop and coordinator interactions, timing, audio streaming,
+   session cleanup and recovery. Existing C sender proves only part of this.
+F. Product goal:
+   independent concurrent AirPlay streams to separate Sonos rooms, isolated
+   session state and timing. Not a single shared stream to a grouped set.
+
+Next software research
+Trace the certificate-fetch network helper and credential-selection callbacks,
+then locate the controller's add-product protocol and unpaired discovery rules.
+A device matching old public firmware does not establish compatibility with
+this live household. Use closer firmware or controller evidence when needed.
+The user has no spare unpaired speaker: do not reset a working device to obtain
+an enrollment trace. No cloud registration requests have been submitted.
+
+Public documentation cross-check
+https://docs.sonos.com/docs/encrypt-content
+Documents unique player certificates and a player-held private key for SMAPI
+content encryption. This is useful corroboration of device identity, not a
+published procedure to enroll third-party virtual players.
+https://docs.sonos.com/docs/control
+Describes household creation and product registration in the Sonos account.
+Music-service account linking docs describe a different flow and must not be
+mistaken for authorization to register a virtual speaker.

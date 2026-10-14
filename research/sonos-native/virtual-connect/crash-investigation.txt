@@ -1,0 +1,35 @@
+iOS crash reported after first virtual Connect experiment.
+Stopped process 86338 using SIGTERM; process confirmed advertisement withdrawal
+and normal exit. The log contains descriptor requests and failed TLS handshakes,
+but no non-smoke-test SOAP pairing commands. Phone identity is not established.
+No iOS crash report was available, so no root cause or fix is verified.
+The descriptor omits significant parts of real Sonos device/service structure,
+and unpaired discovery was an unverified approximation. App compatibility was
+not established before exposure. Default startup now listens only on loopback
+and does not create an SSDP listener or send announcements. The launcher does
+not enable --advertise. A SOAP fault QName namespace issue was independently
+corrected; no evidence ties it to the crash. Local unit checks pass.
+Next diagnostic input: Sonos iOS .ips crash report or equivalent controller
+trace. Do not infer that additional certificate emulation fixes this crash.
+
+Crash report analysis
+Sonos iOS 90.00.52 on iPhone OS 27.0.1. Timestamp 2026-10-14 14:23:04 +0100.
+Main thread abort: std::stoi -> throw_from_string_invalid_arg ->
+std::__throw_invalid_argument -> __cxa_throw -> terminate -> abort.
+This establishes an uncaught invalid integer conversion, not a certificate
+error as the immediate crash mechanism. The Sonos callers are unsymbolicated:
+image offsets 32431356, 27239624, 35152016, 35157864.
+No offending string or field name is included in the report.
+A descriptor GET from 192.0.2.70 occurred at 14:23:03. This is a temporal
+correlation, not proof that this IP is the crashed phone or of a specific field.
+Read-only comparison against the live ZP90 description identified missing
+numeric fields: nsVersion, feature1..4, variant, internalSpeakerSize, memory,
+flash, flashRepartitioned, ampOnTime, retailMode. Prototype zoneType was 3;
+real Connect is 1. Added explicit numeric values and corrected zoneType to 1.
+Feature bits remain zero because the hardware capabilities are unimplemented;
+these values are not a fully validated Sonos compatibility profile.
+Hardware version now uses the observed multi-component format.
+Regression checks validate numeric field presence and parsing. Discovery stays
+disabled. The fix is a candidate, NOT confirmed resolution of the iOS crash.
+Next validation needs controller symbols/trace or a controlled app re-test;
+full setup and eventing contracts remain incomplete.

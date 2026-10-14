@@ -11,3 +11,5 @@ The upstream AirConnect and libraop license notices identify the MIT license. Th
 The RAOP changes are supplied as `patches/libraop-tds.patch` against the exact upstream revision above. `prepare-source.sh` applies them locally. The corresponding upstream license remains in `common/libraop/LICENSE.txt` after dependency initialization.
 
 AirConnect, Sonos, and Apple are referenced to identify interoperability and origin. This fork is not endorsed by those projects or companies.
+
+The `research/sonos-native` tools were developed for this fork from observations and independently written protocol code. Reference projects: [sonos-fenway](https://github.com/trulyspinach/sonos-fenway) (static firmware analysis), [sonos-websocket](https://github.com/jjlawren/sonos-websocket) (local API wire format), and [aiosonos](https://github.com/music-assistant/aiosonos) (API behavior references). Research source and original prose are provided under the repository MIT license; this does not license Sonos firmware or third-party implementations. Firmware binaries, disassembly dumps, private captures, recorded music, credentials and generated keys are not distributed here.

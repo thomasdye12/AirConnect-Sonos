@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/trulyspinach/sonos-fenway",
+  "commit": "b01d1cf7eed34988e15a8208034d2e5a400efde7",
+  "path": "firmware/rootfs/57.10-25140/opt/bin/anacapad",
+  "bytes": 5636472,
+  "sha256": "2a0e6adb831d995a2863f4307077e2c14c59afc52a43815865f0bc09f8580962",
+  "format": "32-bit big-endian PowerPC ELF, stripped",
+  "analysis": "Static inspection only. Not executed or flashed."
+}

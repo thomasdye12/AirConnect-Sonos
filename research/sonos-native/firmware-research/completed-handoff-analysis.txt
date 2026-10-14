@@ -1,0 +1,83 @@
+Completed group-handoff capture — 14 October 2026
+
+Assessment: useful, successful real-speaker handoff; independent native source
+setup is still unresolved. This supersedes the earlier incomplete/passive-capture
+assessment for the newly supplied sonos-group-handoff.pcapng only.
+
+Evidence from the fresh capture
+- SHA-256: 91fa0acceda1238a5e56d25c8c9dc804faaf1e5b308e4718bfaab2a8219070f9
+- 9,942 packets, 15:16:21.245581–15:17:13.597529 UTC, 52.352 seconds.
+- No packet snap-length truncation. Companion log reports zero capture drops;
+  this does not establish complete visibility of all network directions.
+- Readable topology first shows both players standalone, then a two-player group
+  coordinated by Airplay Connect, then the same group coordinated by Server Room.
+- At 15:16:42.618850 UTC, the Mac sends DelegateGroupCoordinationTo to Connect:
+  InstanceID=0, NewCoordinator=Server Room UUID, RejoinGroup=1, ClearSource=0.
+  Its successful response and subsequent topology independently support success.
+- At 15:16:48.527259 UTC, captured topology shows Server Room as coordinator.
+- Restoration traffic returns both to standalone. The companion log additionally
+  records verification of sources, volume, mute and transport settings.
+
+Important visibility limit
+All 2,108 captured packets between these two speakers run from Airplay Connect
+to Server Room; zero run from Server Room to Airplay Connect. A separate tcpdump
+filter corroborated this count. This is consistent with one-direction mirror
+visibility, but the actual switch configuration has not been inspected here.
+Controller traffic on Wi-Fi includes replies from both devices; it must not be
+mistaken for complete speaker-to-speaker visibility.
+
+What is readable and what is not
+- The controller's DelegateGroupCoordinationTo is readable HTTP on port 1400.
+- Seven directional TCP streams between the speakers contain valid TLS records
+  on port 1843, including application-data records during joining and handoff.
+- The Connect initiates a TLS flow to Server Room at 15:16:42.705283 UTC, shortly
+  after the delegate request. Its plaintext SOAP method cannot be identified
+  from record sizes and timing. No TLS contents were decrypted.
+- Readable peer traffic includes event notifications and RemoveMember at
+  15:17:08.786751 UTC during restoration. No readable AddMember,
+  BecomeGroupCoordinator or BecomeGroupCoordinatorAndSource request was found.
+  Their absence cannot prove their exact contents or timing within TLS.
+- This test used a silent HTTP WAV source, according to the log. It does not
+  establish independent native line-in setup or audible quality/latency.
+
+Firmware correlation — nearby Play:3 build 86.10-81100, not installed 86.10-80260
+The handoff helper at 0x1035139c contains calls to two concrete request builders:
+- 0x103516d4 calls 0x106394e4: BecomeGroupCoordinatorAndSource.
+- 0x103518cc calls 0x106390b0: BecomeGroupCoordinator.
+Associated diagnostic strings independently name both operations. Branch choice
+and the exact request used in this capture remain unverified.
+
+Both builders invoke connection-policy selector 0x10641c88 with argument zero
+(at 0x10639558 and 0x10639124 respectively), selecting the alternate control URL
+when policy requires it and that URL is present. This matches the selector used
+by the previously traced AddMember builder. It is consistent with the observed
+TLS traffic, not proof that every alternative setup route requires pairing.
+
+Both handoff variants serialize coordinator/group identity, membership, source
+URI/metadata and playback state. The ordinary variant additionally includes
+TransportSettings and CurrentVLIState; the AndSource variant includes
+CurrentSourceState and ResumePlayback. These are state-transfer messages,
+not simply instructions to listen on a UDP port.
+
+RemoveMember at 0x1063c074 instead calls the same policy selector with argument
+one (0x1063c0b0–0x1063c0b8). Thus, seeing RemoveMember over plain HTTP does not
+establish that AddMember or the handoff builders use the same transport policy.
+The complete meaning of these policy categories remains under investigation.
+
+Consequence for the implementation
+Do not replace native session setup with a lone DelegateGroupCoordinationTo call:
+it delegates an existing real group and transfers existing state. It has not
+created a standalone receiver session for our software sender. The remaining
+implementation question is whether a receiver can create its own usable native
+input/session, or accept a legitimate software peer, without the real Connect.
+These files are enough to establish the handoff and narrow that code research;
+no repeat of this same capture is needed now. If another capture becomes useful,
+both mirror directions must first be verified, and it should answer a specific
+remaining question rather than repeat this experiment unchanged.
+
+Reproduction and limits
+Private TCP reassembly and scripts are retained in work/handoff. Public timeline
+and TLS record metadata are in completed-handoff-evidence.json. Parsing uses
+basic directional TCP sequence reconstruction; interface duplicates and packet
+retransmissions may affect counts. No live device settings were changed during
+this analysis. Production AirConnect and the native sender were not changed.

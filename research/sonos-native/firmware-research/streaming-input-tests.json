@@ -1,0 +1,476 @@
+{
+  "native_udp_independent_input_working": false,
+  "clip_transport": "HTTP WAV controlled through the local WebSocket audioClip API; not native UDP",
+  "clip_tests": [
+    {
+      "test": "clip-stream-probe",
+      "duration_limit_seconds": 12,
+      "mode": "finite",
+      "silent": true,
+      "load_accepted": true,
+      "events": [
+        {
+          "at_seconds": 2.0963,
+          "status": "ACTIVE"
+        },
+        {
+          "at_seconds": 12.8532,
+          "status": "DONE"
+        }
+      ],
+      "http": [
+        {
+          "at": 0.7584,
+          "range": null,
+          "bytes_sent": 2116800,
+          "first_byte_at": 0.7594,
+          "finished_at": 12.752
+        }
+      ],
+      "cancellation_accepted": false,
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "acoustic_latency_measured": false,
+      "audible_quality_verified": false
+    },
+    {
+      "test": "clip-stream-long-probe",
+      "duration_limit_seconds": 40,
+      "mode": "finite",
+      "silent": true,
+      "load_accepted": true,
+      "events": [
+        {
+          "at_seconds": 2.0388,
+          "status": "ACTIVE"
+        },
+        {
+          "at_seconds": 40.8497,
+          "status": "DONE"
+        }
+      ],
+      "http": [
+        {
+          "at": 0.7528,
+          "range": null,
+          "bytes_sent": 7056000,
+          "first_byte_at": 0.7542,
+          "finished_at": 40.749
+        }
+      ],
+      "cancellation_accepted": null,
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "acoustic_latency_measured": false,
+      "audible_quality_verified": false
+    },
+    {
+      "test": "clip-stream-open-ended",
+      "duration_limit_seconds": 15,
+      "mode": "streaming",
+      "silent": true,
+      "load_accepted": true,
+      "events": [
+        {
+          "at_seconds": 2.0647,
+          "status": "ACTIVE"
+        },
+        {
+          "at_seconds": 15.7622,
+          "status": "DISMISSED"
+        }
+      ],
+      "http": [
+        {
+          "at": 0.7445,
+          "range": null,
+          "bytes_sent": 2660112,
+          "first_byte_at": 0.7451,
+          "error": "[Errno 32] Broken pipe"
+        }
+      ],
+      "cancellation_accepted": true,
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "acoustic_latency_measured": false,
+      "audible_quality_verified": false
+    },
+    {
+      "test": "clip-parallel-server-room",
+      "duration_limit_seconds": 12,
+      "mode": "streaming",
+      "silent": true,
+      "load_accepted": true,
+      "events": [
+        {
+          "at_seconds": 2.2084,
+          "status": "ACTIVE"
+        },
+        {
+          "at_seconds": 12.7709,
+          "status": "DISMISSED"
+        }
+      ],
+      "http": [
+        {
+          "at": 0.7456,
+          "range": null,
+          "bytes_sent": 2136204,
+          "first_byte_at": 0.746,
+          "error": "[Errno 32] Broken pipe"
+        }
+      ],
+      "cancellation_accepted": true,
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "acoustic_latency_measured": false,
+      "audible_quality_verified": false
+    },
+    {
+      "test": "clip-parallel-utility-room",
+      "duration_limit_seconds": 25,
+      "mode": "streaming",
+      "silent": true,
+      "load_accepted": true,
+      "events": [
+        {
+          "at_seconds": 2.3839,
+          "status": "ACTIVE"
+        },
+        {
+          "at_seconds": 25.8254,
+          "status": "DISMISSED"
+        }
+      ],
+      "http": [
+        {
+          "at": 0.7745,
+          "range": null,
+          "bytes_sent": 4431168,
+          "first_byte_at": 0.7758,
+          "error": "[Errno 32] Broken pipe"
+        }
+      ],
+      "cancellation_accepted": true,
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": [],
+      "acoustic_latency_measured": false,
+      "audible_quality_verified": false
+    }
+  ],
+  "native_tests": [
+    {
+      "test": "registered-vli-probe",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 500,
+          "upnp_error": 402
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": []
+    },
+    {
+      "test": "vli-handoff-probe",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 500,
+          "upnp_error": 402
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": []
+    },
+    {
+      "test": "coordinator-sink-start-probe",
+      "actions": [
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeGroupCoordinator",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "ChangeTransportSettings",
+          "http_status": 500,
+          "upnp_error": 800
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "BecomeCoordinatorOfStandaloneGroup",
+          "http_status": 200
+        },
+        {
+          "action": "SetAVTransportURI",
+          "http_status": 200
+        },
+        {
+          "action": "Stop",
+          "http_status": 200
+        },
+        {
+          "action": "SetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetMediaInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetTransportInfo",
+          "http_status": 200
+        },
+        {
+          "action": "GetMute",
+          "http_status": 200
+        },
+        {
+          "action": "GetVolume",
+          "http_status": 200
+        },
+        {
+          "action": "GetZoneGroupState",
+          "http_status": 200
+        }
+      ],
+      "native_stats": {
+        "packets": 0,
+        "clock_requests": 0,
+        "late_packets": 0
+      },
+      "restoration": {
+        "transport": true,
+        "mute": true,
+        "volume": true,
+        "source": true,
+        "standalone": true
+      },
+      "restore_errors": []
+    }
+  ],
+  "concurrency": "Server Room and Utility Room tests launched concurrently through separate processes and separate HTTP servers. Each accepted, streamed and cancelled its own clip; durations 12 and 25 seconds. A later status observer ran after both tests had ended, so it does not independently prove overlap.",
+  "production_bridge_modified": false,
+  "validation": {
+    "local_api_event_tests": 4,
+    "all_lab_regression_tests": {
+      "passed": 14,
+      "failed": 0
+    },
+    "python_compile": "passed"
+  }
+}

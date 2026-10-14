@@ -1,0 +1,48 @@
+Independent native AirPlay-to-Sonos: current feasibility
+
+NOT FINISHED. No deployable, Connect-free native audio backend has been produced.
+
+Verified working
+- Native PCM UDP audio and timing sender, after physical Connect setup.
+- User confirmed clear C-sender music playback.
+- Existing HTTP-based AirConnect remains the available bridge.
+
+Verified obstacles
+- Current speakers reject the emulator TLS certificate with unknown_ca and quarantine its identity.
+- Older firmware registration answers a service challenge using a pre-existing flash-backed RSA private key; received registration credentials are also processed using that key.
+- Receiver-only virtual-line-in selection tested on current Server Room firmware returned 402.
+
+Still required to finish
+Either a legitimate mechanism that provisions a trusted software-player identity and corresponding usable key, or an independent native input session API that the current receiver accepts. Neither has been established. A generated self-signed certificate, descriptor copy, simulated pairing success, or playback packets alone do not satisfy these requirements.
+
+What further evidence could unblock implementation
+- A documented or observed provisioning path accepting a new software public key.
+- A current-firmware session trace for an independent native input source, including setup and authentication.
+- Sonos-provided integration capability for a virtual native source.
+
+The inspected paths in the available stock binaries and public diagnostic interfaces have not established those capabilities. No speaker reset, firmware flash, credential clone, or production bridge replacement was performed. Further identical pairing attempts are not useful.
+
+Evidence: registration-bootstrap-trace.txt, registration-crypto-evidence.json, receiver-only-vli-result.json.
+
+Current-branch follow-up: official 86.10-81100 firmware was downloaded and statically inspected (installed build is 86.10-80260). Its challenge handler still reaches a flash-backed key loader. Former sonosws input type 5 is labelled unknown; old WebSocket endpoint strings are absent from its main executable. See modern-firmware-analysis.txt and modern-firmware-evidence.json for evidence and limits. Next useful research is registered source activation, particularly type 6, rather than more identical pairing attempts.
+
+Multi-session and role follow-up
+- Native harness timing-port collision removed; eight concurrent loopback streams validated, including independent PCM/counters/clocks and continued playback after one sender closes.
+- A dynamic timing port was accepted by the real Play:3 using the existing Connect-assisted setup; 527 packets, six timing exchanges, zero late packets, PLAYING/OK. Source/state/volume/mute and standalone topology of both devices verified restored.
+- Receiver self-group selection failed with 402 before ChangeTransportSettings. The tested receiver-only shortcut did not establish a session.
+- Current-branch Play:3 ChangeTransportSettings checks object field 0x4244 at 0x1028a1e0 and returns 800 if nonzero. A group-join path sets that field to zero only after helper 0x10352320 succeeds (0x102ac7f4 to 0x102acaec). BecomeGroupCoordinator also guards this state at 0x102bbc0c; the ordinary path returns 800 at 0x102bbe64. These are static nearby-build observations, not a fully traced authentication chain.
+- No independent native setup or concurrent end-to-end AirPlay-to-speaker test has succeeded. Separate per-room RAOP objects already exist in the HTTP AirConnect implementation; this source-code fact is not a scale/performance test.
+Evidence: self-coordinator-result.json, dynamic-clock-result.json, ../test_native_sessions.py.
+
+Receiver API and handoff follow-up
+- Modern port-1443 WebSocket controller access works. Server Room reports no actor for virtualLineIn:1; the AIRPLAY source selection was rejected as an unsupported namespace.
+- A firmware-derived x-sonos-clone-gc handoff with an empty transport source identifier accepted a synthetic line-in URI without physical Connect control calls. This is source-state setup only: Play returned 701; a subsequent independent run received UDP ECONNREFUSED after one silent packet and no timing exchanges.
+- All bounded runs verified restoration of source/metadata, stopped state, mute, volume and standalone grouping. Production bridge unchanged.
+- The earlier "no independent native setup" statement should be read as no functioning native audio session. A selected URI now succeeds, while opening and starting the audio sink remains unresolved.
+Evidence: receiver-handoff-followup.txt and receiver-handoff-followup.json.
+
+Silent streaming follow-up
+- After the accepted source-less handoff, ChangeTransportSettings was actually reached and returned 800. The native sink is still unavailable through that tested coordinator path.
+- Separate HTTP audioClip transport accepted finite 12/40-second paced WAV streams and an unknown HTTP-length stream with explicit cancellation. Concurrently launched independent silent streams on Server Room and Utility Room both passed control/data/restoration checks.
+- This candidate is HTTP, not native UDP; it is not integrated with AirPlay. Audible quality and actual latency remain unverified. Production bridge unchanged.
+Evidence: streaming-input-tests.txt and streaming-input-tests.json; reusable CLI ../clip_stream_probe.py.

@@ -1,0 +1,24 @@
+{
+  "version_analyzed": "86.10-81100",
+  "installed_version": "86.10-80260",
+  "model": "Play:3, model 8",
+  "package_sha256": "a03d75cba8877c06ea6b8eb35d75416bdd2c3445b03987269eb86f8a3c076ace",
+  "executable_sha256": "566d78d1601d725161a8f48e09d390864d9fd290ae97ea323670bdb801791aaa",
+  "type_labels": {
+    "1": "airplay:",
+    "2": "spotify:",
+    "3": "unknown:",
+    "4": "unknown:",
+    "5": "unknown:",
+    "6": "uri:",
+    "7": "unknown:",
+    "8": "tvproxy:"
+  },
+  "registration_function": "0x105f7b68",
+  "direct_registration_call": "0x101e5f98, argument type 2",
+  "literal_function_pointer_matches": [],
+  "activation_function": "0x105f8ae8",
+  "error_402_return": "0x105f8e44",
+  "legacy_websocket_strings_present": false,
+  "advertised_vli_service_matches_connect": true
+}

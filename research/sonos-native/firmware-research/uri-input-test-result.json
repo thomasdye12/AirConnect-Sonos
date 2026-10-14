@@ -1,0 +1,13 @@
+{
+  "test": "Receiver-only virtual line-in type 6 selection",
+  "result": "Rejected with UPnP 402",
+  "restoration_checks": {
+    "source": true,
+    "source_metadata": true,
+    "transport_state": true,
+    "mute": true
+  },
+  "volume_restore_http_status": 200,
+  "restore_errors": [],
+  "limits": "Selection rejected; audio delivery, latency, and all possible pairing-free paths are not tested by this probe."
+}

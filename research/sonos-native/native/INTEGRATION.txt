@@ -1,0 +1,62 @@
+Native sender integration notes
+
+sonos_packet.c and sonos_sender.c are portable C99 with POSIX sockets/pthreads.
+They have passed local tests on macOS ARM64 and the CloudKey ARMv7/GCC 4.9.
+Build: make
+Tests: make test
+Optional sanitizer build: make test CFLAGS='-g -std=c99 -Wall -Wextra -Werror -fsanitize=address,undefined'
+
+API
+1. Establish the target speaker's native transport session separately.
+2. sonos_sender_open(local_ipv4, receiver_ipv4, 7020, 12300, 75000).
+   Advertise this sender's clock endpoint in the transport settings.
+3. Feed signed 16-bit LE stereo PCM at 44100 Hz to sonos_sender_write.
+   Arbitrary byte boundaries are accepted; incomplete packets are buffered.
+   Writes are paced and blocking. Use a dedicated output thread; do not call
+   under an AirPlay receiver's packet-ingest mutex.
+4. Read packet/clock/late counters with sonos_sender_get_stats.
+5. Stop the producer before sonos_sender_close. Partial PCM is discarded.
+
+Observed successful control path
+Both physical test devices initially standalone. Snapshot receiver source,
+metadata, playback state, mute and volume. Mute receiver during setup.
+Get the real Connect's AudioIn/StartTransmissionToGroup settings.
+Join receiver to Connect using SetAVTransportURI x-rincon:<Connect UUID>.
+Now ChangeTransportSettings accepts replacement network endpoints.
+Feed audio to receiver UDP 7020 and answer its UDP clock requests.
+Restore standalone receiver role, original source, playback state, volume/mute.
+See probe.py for the tested orchestration and its limitations.
+
+Integration boundary in AirConnect
+The current libraop streamer decodes ALAC into PCM, then reads that PCM from its
+buffer in the HTTP output thread before encoder_encode. A native backend should
+consume ordered buffered PCM at this boundary, bypassing the MP3/HTTP renderer
+path. It must preserve AirPlay flush/restart semantics and avoid blocking the
+input mutex. The current PCM consumption is gated on an HTTP client connection;
+that gate and output lifecycle need explicit handling for a native backend.
+The real Connect group dependency also changes coordinator discovery, naming,
+volume and polling semantics. Those effects need handling before deployment.
+
+Current limits
+Single destination per sender; one clock port per instance. The Python harness
+now requests a distinct OS-assigned timing port and exposes it as clock_port;
+probe.py advertises that exact port in ChangeTransportSettings. Eight concurrent
+loopback senders passed isolation checks for PCM, sequence/byte counters, timing
+replies and closing one sender while others continue. Server Room accepted a
+dynamic port in a muted 3-second Connect-assisted test: 527 packets, six timing
+requests, zero late packets. Multiple physical receivers and independent
+setup remain unverified. This is sender concurrency, not completed multiroom AirPlay integration.
+No recovery/retransmission protocol, loss concealment or independent Sonos
+household registration. No AirConnect integration or automatic service takeover
+has been installed. No end-to-end acoustic latency measurement.
+A producer stall over 250 ms returns ETIMEDOUT rather than bursting stale audio.
+The library does not automatically reconfigure the receiver after such an error.
+Cancellation and rollback belong to the caller; close cannot race a PCM write.
+Do not mistake the 75 ms timestamp lead for measured end-to-end latency.
+
+Concurrent harness validation
+  make -C native all
+  python3 -m unittest -v test_native_sessions.py test_linein.py
+Ten tests passed on macOS. NativeSender accepts keyword audio_port and
+clock_port; default clock_port=0 allocates an independent port. Always advertise
+sender.clock_port, never assume 12300. Writes/stats after close raise RuntimeError.
