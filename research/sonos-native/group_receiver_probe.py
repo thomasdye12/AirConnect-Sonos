@@ -31,8 +31,8 @@ def validate_options(args):
     signal = getattr(args, 'signal', 'silence')
     if signal not in ('silence', 'tone'):
         raise ValueError('Unknown test signal')
-    if not 0 <= getattr(args, 'test_volume', 15) <= 25:
-        raise ValueError('Test volume must be 0..25')
+    if not 0 <= getattr(args, 'test_volume', 15) <= 35:
+        raise ValueError('Test volume must be 0..35')
     if getattr(args, 'audible', False):
         if signal != 'tone' or args.seconds > 30 or args.handoff_to_synthetic:
             raise ValueError('Audible tests require tone, at most 30 seconds, and no synthetic handoff')
@@ -77,6 +77,11 @@ def group_for(topology, uid):
 def standalone(snapshot, uid):
     group = group_for(snapshot['topology'], uid)
     return group is not None and group.get('Coordinator') == uid and len(list(group.iter('ZoneGroupMember'))) == 1
+
+
+def separated_in_both_views(receiver, helper, receiver_id, helper_id):
+    return all(standalone(view, uid) for view in (receiver, helper)
+               for uid in (receiver_id, helper_id))
 
 
 def phase_checks(phase, receiver_id, promote=False, promotion_mode='retain'):
@@ -253,9 +258,14 @@ def run(args):
                         phase['after_promotion'] = snapshot(args.receiver)
                         record_checkpoint(phase, 'promoted', sender, phase_start)
                         if promotion_mode != 'retain':
-                            action(args.coordinator, 'RemoveMember', {'MemberID': args.receiver_id}, '/GroupManagement/Control', 'GroupManagement')
-                            phase['remove_member_accepted'] = True
-                            phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
+                            phase['helper_after_promotion'] = snapshot(args.coordinator)
+                            phase['helper_already_released'] = separated_in_both_views(
+                                phase['after_promotion'], phase['helper_after_promotion'],
+                                args.receiver_id, args.coordinator_id)
+                            if not phase['helper_already_released']:
+                                action(args.coordinator, 'RemoveMember', {'MemberID': args.receiver_id}, '/GroupManagement/Control', 'GroupManagement')
+                                phase['remove_member_accepted'] = True
+                                phase['helper_standalone_response'] = av(args.coordinator, 'BecomeCoordinatorOfStandaloneGroup')
                             phase['after_helper_detach'] = snapshot(args.receiver)
                             record_checkpoint(phase, 'helper_released', sender, phase_start)
                         if promotion_mode == 'resume':
@@ -339,7 +349,7 @@ def main():
     p.add_argument('--reset-helper-group', action='store_true', help='After RemoveMember, request standalone state on the helper to test group independence')
     p.add_argument('--signal', choices=('silence', 'tone'), default='silence', help='PCM payload; tone remains muted unless --audible is specified')
     p.add_argument('--audible', action='store_true', help='Unmute receiver for a tone test of at most 30 seconds')
-    p.add_argument('--test-volume', type=int, default=15, help='Audible test volume, 0..25; original volume is restored')
+    p.add_argument('--test-volume', type=int, default=15, help='Audible test volume, 0..35; original volume is restored')
     p.add_argument('--promotion-delay', type=int, default=3, help='Seconds before promotion, 3..30, leaving at least two seconds afterward')
     p.add_argument('--promote-receiver', action='store_true', help='Test receiver promotion while the same sender continues')
     p.add_argument('--promotion-mode', choices=('retain', 'detach', 'resume'), default='retain', help='Promotion: retain old group, restore own group and detach helper, or additionally request Play')

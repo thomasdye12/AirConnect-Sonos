@@ -1,0 +1,132 @@
+{
+  "date": "2026-10-14",
+  "offline_checks_passed": 33,
+  "production_bridge_modified": false,
+  "independent_setup_solved": false,
+  "listener_confirmation": {
+    "initial_aborted_test": "Tone heard for about 10 seconds",
+    "completed_25_second_retry": "Yes, clear for the full test",
+    "user_confirmed_detached_tone": true,
+    "volume": 35,
+    "music_quality_verified": false,
+    "long_duration_audible_endurance_verified": false,
+    "acoustic_latency_measured": false
+  },
+  "cases": [
+    {
+      "name": "initial audible run; cleanup rejected",
+      "private_evidence_sha256": "62959f540731eee15bac06b042153d738c972209ef477c4798adddf9fd5c8bf2",
+      "audible_requested": true,
+      "requested_seconds": 25,
+      "stats": {
+        "packets": 1565,
+        "clock_requests": 18,
+        "late_packets": 0
+      },
+      "runtime_error_present": true,
+      "all_restored": true,
+      "restore_error_count": 0,
+      "sender_check_passed": false,
+      "transport_check_passed": false,
+      "after_transition": {}
+    },
+    {
+      "name": "muted cleanup verification",
+      "private_evidence_sha256": "7febb8dedb9a715a4bd337c128fdf0d9f016cf21f99226886f7d1b6c4c806f53",
+      "audible_requested": false,
+      "requested_seconds": 12,
+      "stats": {
+        "packets": 2108,
+        "clock_requests": 24,
+        "late_packets": 0
+      },
+      "runtime_error_present": false,
+      "all_restored": true,
+      "restore_error_count": 0,
+      "helper_already_released": true,
+      "reference_progress": {
+        "seconds": 3.1816,
+        "packets": 559,
+        "clock_requests": 6,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "detached_progress": {
+        "seconds": 8.2052,
+        "packets": 1442,
+        "clock_requests": 16,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": false,
+      "state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_transition": {
+        "transport": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "mute": {
+          "CurrentMute": "1"
+        },
+        "volume": {
+          "CurrentVolume": "50"
+        }
+      }
+    },
+    {
+      "name": "completed audible retry",
+      "private_evidence_sha256": "9f36e8b9630febd8938cb1246f2f58808ba35b9799ee184f5934ddd177ce91b8",
+      "audible_requested": true,
+      "requested_seconds": 25,
+      "stats": {
+        "packets": 4392,
+        "clock_requests": 50,
+        "late_packets": 0
+      },
+      "runtime_error_present": false,
+      "all_restored": true,
+      "restore_error_count": 0,
+      "helper_already_released": true,
+      "reference_progress": {
+        "seconds": 8.2046,
+        "packets": 1441,
+        "clock_requests": 16,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "detached_progress": {
+        "seconds": 16.1064,
+        "packets": 2830,
+        "clock_requests": 32,
+        "late_packets": 0,
+        "acoustic_playback_verified": false
+      },
+      "sender_check_passed": true,
+      "transport_check_passed": false,
+      "state": {
+        "CurrentTransportState": "PAUSED_PLAYBACK",
+        "CurrentTransportStatus": "OK",
+        "CurrentSpeed": "1"
+      },
+      "after_transition": {
+        "transport": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "mute": {
+          "CurrentMute": "0"
+        },
+        "volume": {
+          "CurrentVolume": "35"
+        }
+      }
+    }
+  ]
+}

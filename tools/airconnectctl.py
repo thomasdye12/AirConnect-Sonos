@@ -73,7 +73,7 @@ def main(argv=None):
     udp.add_argument('--seconds', type=int, choices=range(1, 121), default=20, metavar='1..120')
     udp.add_argument('--signal', choices=('silence', 'tone'), default='silence')
     udp.add_argument('--audible', action='store_true', help='Explicitly unmute a tone test, at most 30 seconds')
-    udp.add_argument('--test-volume', type=int, choices=range(26), default=15, metavar='0..25')
+    udp.add_argument('--test-volume', type=int, choices=range(36), default=15, metavar='0..35')
     udp.add_argument('--promotion-delay', type=int, choices=range(3, 31), default=8, metavar='3..30')
     args = parser.parse_args(argv)
     if not args.command:

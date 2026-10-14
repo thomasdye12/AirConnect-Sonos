@@ -1,4 +1,12 @@
-LATEST PCM CHECK: the detached endpoint also sustained 120 seconds of muted
+LATEST LISTENING RESULT: Kitchen played a user-confirmed clear tone throughout
+a 25-second test at volume 35, including about 16 seconds after helper release.
+Both speakers reported separate standalone groups and were restored afterward.
+Kitchen still reported PAUSED_PLAYBACK/OK, showing that status is not a reliable
+indicator of acoustic output for this retained-sink sequence. Initial setup still
+briefly needs another speaker. Music, longer audible endurance, latency and
+helper-free bootstrap remain unverified. See kitchen-listening-test.json.
+
+PREVIOUS PCM CHECK: the detached endpoint also sustained 120 seconds of muted
 nonzero PCM but remained PAUSED_PLAYBACK. The controller now exposes a bounded
 udp-test command, with a separately enabled listening mode. Its ordinary-group
 control passed 20 seconds of nonzero PCM in PLAYING state. No audible validation

@@ -2,6 +2,8 @@
 
 ## Research follow-up — 2026-10-14
 
+Kitchen cleanup now skips redundant membership removal only when both speakers independently report both devices standalone. This avoids aborting an already detached session. The user confirmed a clear 25-second tone at volume 35, including about 16 seconds after helper release, despite paused transport status. Initial helper-assisted setup remains necessary. Increased the explicitly requested UDP test-volume ceiling to 35; the default remains 15 and audible tests remain opt-in and bounded to 30 seconds.
+
 Added separate pre/post-detachment sender diagnostics and an offline decoder for the traced source-state layout. The alternate handoff handler can continue after source-state parsing fails; successful control replies alone must not be interpreted as source activation. Decoder fields remain opaque where semantics are unverified. No production backend change.
 
 Added controller `udp-test`, muted nonzero PCM, and an explicitly enabled, bounded tone listening mode. A detached receiver sustained a 120-second nonzero-PCM test but continued to report paused. Traced the reference firmware's explicit paused-state selection for source-less promotion. Source/state/volume/mute/group restoration remains mandatory; production playback is unchanged. See `detached-pcm-followup.txt`.

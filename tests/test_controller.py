@@ -54,6 +54,13 @@ class ControllerTests(unittest.TestCase):
                 with self.assertRaises(ValueError): c.main(self.udp_args() + options)
             call.assert_not_called()
 
+    def test_udp_explicit_volume_35_is_forwarded(self):
+        with patch.object(c.os.path, 'isfile', return_value=True), patch.object(c.subprocess, 'call', return_value=1) as call:
+            c.main(self.udp_args() + ['--audible', '--signal', 'tone', '--test-volume', '35'])
+            command = call.call_args[0][0]
+            self.assertIn('--audible', command)
+            self.assertEqual(command[command.index('--test-volume') + 1], '35')
+
     def test_udp_missing_library_refused_before_probe(self):
         with patch.object(c.os.path, 'isfile', return_value=False), patch.object(c.subprocess, 'call') as call:
             with self.assertRaises(RuntimeError): c.main(self.udp_args())

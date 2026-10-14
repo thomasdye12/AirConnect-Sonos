@@ -74,7 +74,7 @@ class GroupProbeTests(unittest.TestCase):
     def test_invalid_audio_options_rejected_before_device_access(self):
         for options in (dict(audible=True), dict(audible=True, signal='tone', seconds=31),
                         dict(audible=True, signal='tone', promotion_mode='resume'),
-                        dict(test_volume=26), dict(seconds=121),
+                        dict(test_volume=36), dict(seconds=121),
                         dict(promote_receiver=True, seconds=8, promotion_delay=8)):
             household = Household()
             with self.subTest(options=options), self.assertRaises(ValueError):
@@ -138,6 +138,15 @@ class GroupProbeTests(unittest.TestCase):
         self.assertEqual(probe.virtual_identity(UA), probe.virtual_identity(UA))
         self.assertNotEqual(probe.virtual_identity(UA), probe.virtual_identity(UB))
         self.assertRegex(probe.virtual_identity(UA), r'^RINCON_02[0-9A-F]{10}01400$')
+
+    def test_already_released_requires_independent_agreement(self):
+        household = Household()
+        separate = dict(topology={'ZoneGroupState': household.topology()})
+        household.joined = True
+        joined = dict(topology={'ZoneGroupState': household.topology()})
+        self.assertTrue(probe.separated_in_both_views(separate, separate, UA, UB))
+        self.assertFalse(probe.separated_in_both_views(separate, joined, UA, UB))
+        self.assertFalse(probe.separated_in_both_views(joined, separate, UA, UB))
 
     def completed_phase(self):
         return dict(setup_accepted=True, promotion_accepted=True, duration_seconds=120,

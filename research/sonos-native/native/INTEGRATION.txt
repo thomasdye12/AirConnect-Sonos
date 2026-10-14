@@ -1,4 +1,10 @@
-LATEST ROLE TEST: self-promotion with own group ID and membership cleanup kept
+LATEST LISTENING TEST: Kitchen rendered a user-confirmed clear tone throughout
+25 seconds, including about 16 seconds after helper release, at volume 35.
+Transport status still reported paused. Initial helper-assisted setup is required;
+music, longer audible endurance, recovery and AirPlay integration are unverified.
+See ../firmware-research/kitchen-listening-test.json. Production is unchanged.
+
+PREVIOUS ROLE TEST: self-promotion with own group ID and membership cleanup kept
 UDP/timing alive for 120 seconds after releasing the helper. Sonos reported
 PAUSED_PLAYBACK; audible rendering remains unverified. Initial setup still uses
 another stopped speaker. Do not integrate this as a working AirPlay backend.
