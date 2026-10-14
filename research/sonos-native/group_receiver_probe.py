@@ -22,7 +22,7 @@ import xml.etree.ElementTree as ET
 from native_sender import NativeSender
 from soap import call
 from probe import values, AV, RC
-from probe_pcm import pcm_packet
+from probe_pcm import pcm_packet, load_wav
 
 
 def validate_options(args):
@@ -31,11 +31,13 @@ def validate_options(args):
     signal = getattr(args, 'signal', 'silence')
     if signal not in ('silence', 'tone'):
         raise ValueError('Unknown test signal')
+    if getattr(args, 'wav', None) and (signal != 'silence' or args.handoff_to_synthetic):
+        raise ValueError('WAV cannot combine with a generated tone or synthetic handoff')
     if not 0 <= getattr(args, 'test_volume', 15) <= 35:
         raise ValueError('Test volume must be 0..35')
     if getattr(args, 'audible', False):
-        if signal != 'tone' or args.seconds > 30 or args.handoff_to_synthetic:
-            raise ValueError('Audible tests require tone, at most 30 seconds, and no synthetic handoff')
+        if (signal != 'tone' and not getattr(args, 'wav', None)) or args.seconds > 30 or args.handoff_to_synthetic:
+            raise ValueError('Audible tests require tone or WAV, at most 30 seconds, and no synthetic handoff')
         if getattr(args, 'promotion_mode', 'retain') == 'resume':
             raise ValueError('The failed resume experiment is restricted to muted testing')
     delay = getattr(args, 'promotion_delay', 3)
@@ -128,6 +130,7 @@ def run(args):
     validate_options(args)
     audible = getattr(args, 'audible', False)
     signal = getattr(args, 'signal', 'silence')
+    wav_pcm = load_wav(args.wav, args.seconds) if getattr(args, 'wav', None) else None
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     result = {'actions': [], 'restore_errors': [], 'phases': [],
@@ -135,6 +138,9 @@ def run(args):
               'silent': not audible, 'signal': signal,
               'audible_requested': audible, 'acoustic_playback_verified': False,
               'independent_setup': False}
+    if wav_pcm is not None:
+        result['signal'] = 'wav'
+        result['pcm_input'] = dict(bytes=len(wav_pcm), sha256=hashlib.sha256(wav_pcm).hexdigest(), fade_ms=200)
     virtual_id = virtual_identity(args.receiver_id)
     result['virtual_id'] = virtual_id
     result['started_utc'] = datetime.now(timezone.utc).isoformat()
@@ -219,7 +225,8 @@ def run(args):
                     try:
                         for index in range(packet_count):
                             if stop.is_set(): break
-                            sender.write(pcm_packet(index, packet_count, signal))
+                            sender.write(wav_pcm[index * 1004:(index + 1) * 1004] if wav_pcm is not None
+                                         else pcm_packet(index, packet_count, signal))
                             ready.set()
                     except Exception as exc:
                         errors.append(str(exc))
@@ -348,7 +355,8 @@ def main():
     p.add_argument('--release-coordinator', action='store_true', help='After handoff, remove receiver from the real coordinator membership list')
     p.add_argument('--reset-helper-group', action='store_true', help='After RemoveMember, request standalone state on the helper to test group independence')
     p.add_argument('--signal', choices=('silence', 'tone'), default='silence', help='PCM payload; tone remains muted unless --audible is specified')
-    p.add_argument('--audible', action='store_true', help='Unmute receiver for a tone test of at most 30 seconds')
+    p.add_argument('--wav', help='44.1 kHz stereo 16-bit PCM WAV; remains muted unless --audible is specified')
+    p.add_argument('--audible', action='store_true', help='Unmute receiver for a tone or WAV test of at most 30 seconds')
     p.add_argument('--test-volume', type=int, default=15, help='Audible test volume, 0..35; original volume is restored')
     p.add_argument('--promotion-delay', type=int, default=3, help='Seconds before promotion, 3..30, leaving at least two seconds afterward')
     p.add_argument('--promote-receiver', action='store_true', help='Test receiver promotion while the same sender continues')

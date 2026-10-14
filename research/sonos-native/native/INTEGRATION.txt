@@ -1,4 +1,10 @@
-LATEST LISTENING TEST: Kitchen rendered a user-confirmed clear tone throughout
+LATEST MUSIC TEST: Bathroom rendered user-confirmed clear music through an
+ending tone in a 30-second test at volume 35, with helper release near the start.
+5,270 packets, 60 clock requests, zero late sends; both speakers restored.
+See ../firmware-research/bathroom-music-test.json. This still requires helper setup;
+long endurance, recovery, acoustic latency and AirPlay integration are unverified.
+
+PREVIOUS LISTENING TEST: Kitchen rendered a user-confirmed clear tone throughout
 25 seconds, including about 16 seconds after helper release, at volume 35.
 Transport status still reported paused. Initial helper-assisted setup is required;
 music, longer audible endurance, recovery and AirPlay integration are unverified.

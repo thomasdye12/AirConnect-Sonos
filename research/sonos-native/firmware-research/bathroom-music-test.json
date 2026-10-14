@@ -1,0 +1,198 @@
+{
+  "date": "2026-10-14",
+  "test": "Bathroom detached PCM music",
+  "volume": 35,
+  "signal": "wav",
+  "pcm_input": {
+    "bytes": 4409568,
+    "sha256": "5dc858acaa8bf9d07d286451b186c6a081ea7f54b7df79191f0630f53c6785d1",
+    "fade_ms": 200
+  },
+  "private_evidence_sha256": "6ded34deb909be4727e71295537895bd724b8c70c99f1ed70367227647cc95a5",
+  "listener_confirmation": {
+    "first_25_second_test": "User thought music stopped at about 14 seconds; uncertain",
+    "clear_full_test_verified": false
+  },
+  "offline_checks_passed": 36,
+  "production_bridge_modified": false,
+  "independent_setup_solved": false,
+  "runtime_error_present": false,
+  "all_restored": true,
+  "restore_error_count": 0,
+  "duration_seconds": 25,
+  "helper_already_released": true,
+  "checkpoints": {
+    "stream_started": {
+      "elapsed": 0.0,
+      "stats": {
+        "packets": 1,
+        "clock_requests": 0,
+        "late_packets": 0
+      }
+    },
+    "before_promotion": {
+      "elapsed": 8.2045,
+      "stats": {
+        "packets": 1442,
+        "clock_requests": 16,
+        "late_packets": 0
+      }
+    },
+    "promoted": {
+      "elapsed": 8.5385,
+      "stats": {
+        "packets": 1501,
+        "clock_requests": 17,
+        "late_packets": 0
+      }
+    },
+    "helper_released": {
+      "elapsed": 8.8969,
+      "stats": {
+        "packets": 1564,
+        "clock_requests": 18,
+        "late_packets": 0
+      }
+    },
+    "stream_finished": {
+      "elapsed": 24.9955,
+      "stats": {
+        "packets": 4392,
+        "clock_requests": 50,
+        "late_packets": 0
+      }
+    }
+  },
+  "stats": {
+    "packets": 4392,
+    "clock_requests": 50,
+    "late_packets": 0
+  },
+  "state": {
+    "CurrentTransportState": "PAUSED_PLAYBACK",
+    "CurrentTransportStatus": "OK",
+    "CurrentSpeed": "1"
+  },
+  "reference_progress": {
+    "seconds": 8.2045,
+    "packets": 1441,
+    "clock_requests": 16,
+    "late_packets": 0,
+    "acoustic_playback_verified": false
+  },
+  "detached_progress": {
+    "seconds": 16.0986,
+    "packets": 2828,
+    "clock_requests": 32,
+    "late_packets": 0,
+    "acoustic_playback_verified": false
+  },
+  "sender_check_passed": true,
+  "transport_check_passed": false,
+  "helper_standalone": true,
+  "receiver_standalone": true,
+  "receiver_after_transition": {
+    "transport": {
+      "CurrentTransportState": "PAUSED_PLAYBACK",
+      "CurrentTransportStatus": "OK",
+      "CurrentSpeed": "1"
+    },
+    "mute": {
+      "CurrentMute": "0"
+    },
+    "volume": {
+      "CurrentVolume": "35"
+    }
+  },
+  "end_marker_retry": {
+    "description": "28 seconds music followed by two-second tone; promotion requested at three seconds",
+    "private_evidence_sha256": "3c0d83047144e9f1fbf4aeafe4798ca4e3961afa86b236fef184dfed0c3a2353",
+    "listener_confirmation": {
+      "response": "Yes\u2014clear music, then the tone",
+      "clear_music_through_end_marker_verified": true,
+      "detached_music_verified": true,
+      "long_duration_endurance_verified": false,
+      "acoustic_latency_measured": false
+    },
+    "volume": 35,
+    "runtime_error_present": false,
+    "all_restored": true,
+    "restore_error_count": 0,
+    "pcm_input": {
+      "bytes": 5291080,
+      "sha256": "748cd8044f4b5f722bee02fac8bf4756005867388b991a2cd6ab98e6cea35c66",
+      "fade_ms": 200
+    },
+    "duration_seconds": 30,
+    "helper_already_released": true,
+    "stats": {
+      "packets": 5270,
+      "clock_requests": 60,
+      "late_packets": 0
+    },
+    "state": {
+      "CurrentTransportState": "PAUSED_PLAYBACK",
+      "CurrentTransportStatus": "OK",
+      "CurrentSpeed": "1"
+    },
+    "reference_progress": {
+      "seconds": 3.1459,
+      "packets": 553,
+      "clock_requests": 6,
+      "late_packets": 0,
+      "acoustic_playback_verified": false
+    },
+    "detached_progress": {
+      "seconds": 26.1405,
+      "packets": 4593,
+      "clock_requests": 52,
+      "late_packets": 0,
+      "acoustic_playback_verified": false
+    },
+    "sender_check_passed": true,
+    "transport_check_passed": false,
+    "helper_standalone": true,
+    "receiver_standalone": true,
+    "during_test_read_only_samples": [
+      {
+        "GetTransportInfo": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "GetMute": {
+          "CurrentMute": "0"
+        },
+        "GetVolume": {
+          "CurrentVolume": "35"
+        }
+      },
+      {
+        "GetTransportInfo": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "GetMute": {
+          "CurrentMute": "0"
+        },
+        "GetVolume": {
+          "CurrentVolume": "35"
+        }
+      },
+      {
+        "GetTransportInfo": {
+          "CurrentTransportState": "PAUSED_PLAYBACK",
+          "CurrentTransportStatus": "OK",
+          "CurrentSpeed": "1"
+        },
+        "GetMute": {
+          "CurrentMute": "0"
+        },
+        "GetVolume": {
+          "CurrentVolume": "35"
+        }
+      }
+    ]
+  }
+}

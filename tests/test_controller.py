@@ -66,4 +66,15 @@ class ControllerTests(unittest.TestCase):
             with self.assertRaises(RuntimeError): c.main(self.udp_args())
             call.assert_not_called()
 
+    def test_udp_wav_explicit_audible_and_conflict(self):
+        with patch.object(c.os.path, 'isfile', return_value=True), patch.object(c.subprocess, 'call', return_value=1) as call:
+            c.main(self.udp_args() + ['--wav', 'private music.wav', '--audible'])
+            command = call.call_args[0][0]
+            self.assertEqual(command[command.index('--wav') + 1], 'private music.wav')
+            self.assertIn('--audible', command)
+            call.reset_mock()
+            with self.assertRaises(ValueError):
+                c.main(self.udp_args() + ['--wav', 'private music.wav', '--signal', 'tone'])
+            call.assert_not_called()
+
 if __name__ == '__main__': unittest.main()

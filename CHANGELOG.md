@@ -2,6 +2,8 @@
 
 ## Research follow-up — 2026-10-14
 
+Added bounded WAV music input to controller UDP tests. Inputs are validated before device access, preserve stereo PCM, and fade at both ends; audible output remains explicit. Bathroom's initial 25-second listening result was uncertain. A 30-second repeat with early helper release and an ending tone was user-confirmed clear through the end marker: 5,270 packets, 60 clock requests, zero late sends, both speakers restored. Initial helper setup remains necessary. See `bathroom-music-test.json`.
+
 Kitchen cleanup now skips redundant membership removal only when both speakers independently report both devices standalone. This avoids aborting an already detached session. The user confirmed a clear 25-second tone at volume 35, including about 16 seconds after helper release, despite paused transport status. Initial helper-assisted setup remains necessary. Increased the explicitly requested UDP test-volume ceiling to 35; the default remains 15 and audible tests remain opt-in and bounded to 30 seconds.
 
 Added separate pre/post-detachment sender diagnostics and an offline decoder for the traced source-state layout. The alternate handoff handler can continue after source-state parsing fails; successful control replies alone must not be interpreted as source activation. Decoder fields remain opaque where semantics are unverified. No production backend change.

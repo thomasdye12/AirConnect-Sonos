@@ -72,7 +72,8 @@ def main(argv=None):
     udp.add_argument('--mode', choices=('ordinary', 'detach'), default='ordinary')
     udp.add_argument('--seconds', type=int, choices=range(1, 121), default=20, metavar='1..120')
     udp.add_argument('--signal', choices=('silence', 'tone'), default='silence')
-    udp.add_argument('--audible', action='store_true', help='Explicitly unmute a tone test, at most 30 seconds')
+    udp.add_argument('--wav', help='44.1 kHz stereo 16-bit PCM WAV test input')
+    udp.add_argument('--audible', action='store_true', help='Explicitly unmute a tone or WAV test, at most 30 seconds')
     udp.add_argument('--test-volume', type=int, choices=range(36), default=15, metavar='0..35')
     udp.add_argument('--promotion-delay', type=int, choices=range(3, 31), default=8, metavar='3..30')
     args = parser.parse_args(argv)
@@ -82,8 +83,10 @@ def main(argv=None):
     if args.command == 'udp-test':
         if sys.version_info < (3, 8):
             raise RuntimeError('UDP tests need Python 3.8+ on your test host')
-        if args.audible and (args.signal != 'tone' or args.seconds > 30):
-            raise ValueError('Audible tests require --signal tone and at most 30 seconds')
+        if args.wav and args.signal != 'silence':
+            raise ValueError('Choose WAV or generated tone, not both')
+        if args.audible and ((args.signal != 'tone' and not args.wav) or args.seconds > 30):
+            raise ValueError('Audible tests require --signal tone or --wav and at most 30 seconds')
         if args.mode == 'detach' and args.seconds < args.promotion_delay + 2:
             raise ValueError('Detached test needs at least two seconds after promotion')
         directory = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
@@ -101,6 +104,8 @@ def main(argv=None):
             command.extend(['--promote-receiver', '--promotion-mode', 'detach'])
         if args.audible:
             command.append('--audible')
+        if args.wav:
+            command.extend(['--wav', args.wav])
         return subprocess.call(command)
     if args.command == 'clip-test':
         if sys.version_info < (3, 8):

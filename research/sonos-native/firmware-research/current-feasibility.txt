@@ -1,4 +1,13 @@
-LATEST LISTENING RESULT: Kitchen played a user-confirmed clear tone throughout
+LATEST MUSIC RESULT: Bathroom played user-confirmed clear music through an ending
+tone in a 30-second test at volume 35. The helper was released near the start;
+the detached interval lasted 26.1405 seconds. The source contained 28 seconds
+of music and a two-second ending tone. Sender completed 5,270 packets, 60 timing
+requests and zero late sends. Both speakers were restored. The initial 25-second
+music result was uncertain; the marked repeat supplied clear listening evidence.
+Initial helper setup, long endurance, latency and AirPlay integration remain open.
+Sonos still reported paused. See bathroom-music-test.json.
+
+PREVIOUS LISTENING RESULT: Kitchen played a user-confirmed clear tone throughout
 a 25-second test at volume 35, including about 16 seconds after helper release.
 Both speakers reported separate standalone groups and were restored afterward.
 Kitchen still reported PAUSED_PLAYBACK/OK, showing that status is not a reliable
