@@ -65,6 +65,8 @@ Copy the bridge credential securely into that private key file. Protect both fil
 
 With native mode enabled, Sonos audio bypasses the HTTP `urlradio` session, its volume controls and resume polling. The native worker owns volume/restoration. No automatic fallback happens after an error, to prevent two competing backends. For rollback, set `enabled` to false and restart Protect; the original HTTP path remains in the module. Back up the current module before patching it.
 
+For app connection failures, filter Protect's stdout/stderr for `[protect-talkback]`. Timestamped events distinguish the client connection, camera endpoint lookup, bridge connection, speaker readiness, first microphone bytes, first decoded PCM and closure. Closing counters include accepted AAC bytes, PCM bytes and bytes discarded before speaker readiness; no audio payload or connection credential is logged. Runtime bridge errors are sent as an error message before closing the client socket. A client that disconnects during camera endpoint lookup no longer starts speaker preparation afterwards.
+
 ## Verification
 
 - `python3 -m unittest discover -s tests -p test_intercom.py`: masked PCM/control framing, malformed/unmasked/oversized rejection, authentication, Origin rejection, format/volume/room validation, duplicate admission and disconnect cleanup using a fake worker.
@@ -74,4 +76,6 @@ With native mode enabled, Sonos audio bypasses the HTTP `urlradio` session, its 
 - Muted live test: 15-second AAC source decoded and sent 2,650,112 PCM bytes; native sender reported 3,423 UDP packets, 40 clock requests, 662,178 signal frames and zero worker queue drops. Nine packets were more than 6 ms late. Helper and receiver restoration were logged as verified, and worker exit was zero. No acoustic quality or end-to-end microphone latency claim is made from this muted test.
 - Front Door recovery regression: reproduced a helper retaining the receiver in an orphaned old group after promotion. After checking each coordinator's own membership and waiting after detach, a muted 15-second AAC stream reached ready in 7.6 seconds, sent 2,650,112 PCM bytes with zero queue drops, and restored both speakers. This validates setup and transport; an audible microphone test remains necessary.
 
-AAC ingress is expected to be ADTS, matching the existing live AAC stream path. Other client codecs/containers need an explicit decoder change. Actual iPhone microphone playback, audible quality, longer endurance and concurrent audible intercom/AirPlay still require user validation.
+- Live microphone follow-up: after clearing an expired legacy HTTP talkback source from the stopped receiver, the user reported substantially improved Front Door playback. The unmuted session delivered 9,170,856 PCM bytes (about 52 seconds), zero worker queue drops, exit code zero and verified speaker restoration. This run preceded the additional connection diagnostics; it does not establish that the app's transient WebSocket warning is resolved.
+
+AAC ingress is expected to be ADTS, matching the existing live AAC stream path. Other client codecs/containers need an explicit decoder change. Detailed audible quality, longer endurance and concurrent audible intercom/AirPlay still require user validation.

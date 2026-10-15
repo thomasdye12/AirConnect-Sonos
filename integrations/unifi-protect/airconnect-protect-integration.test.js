@@ -27,9 +27,24 @@ test('Protect waits for native readiness, retains camera forwarding and closes c
     assert.equal(service.sessions.size,0); // No HTTP radio session or resume polling.
     client.emit('message',Buffer.from([1,2,3,4]),true);
     await until(()=>cameraBytes===4);
-    client.close(); await until(()=>peer.readyState===WebSocket.CLOSED);
+    peer.send(JSON.stringify({type:'error',message:'Receiver disconnected'}));
+    await until(()=>client.readyState===WebSocket.CLOSED);
+    assert.deepEqual(messages.at(-1),{type:'error',message:'Receiver disconnected'});
+    await until(()=>peer.readyState===WebSocket.CLOSED);
   } finally {
     client.close();
     for(const server of [bridge,camera]){for(const ws of server.clients)ws.terminate();await new Promise(r=>server.close(r));}
   }
+});
+
+test('client cancelled during camera endpoint lookup does not start a speaker session', async () => {
+  let finishEndpoint;
+  const api={bootstrap:{cameras:[{id:'camera'}]},getWsEndpoint:()=>new Promise(resolve=>{finishEndpoint=resolve;})};
+  const client=new EventEmitter(); client.readyState=WebSocket.OPEN;
+  const service=new ProtectTalkbackService(api,{nativeConfig:{enabled:true,url:'ws://127.0.0.1:1',token:'fixture'}});
+  const pending=service.bridge(client,'camera',{sonosSpeaker:'Test room'});
+  client.readyState=WebSocket.CLOSED;
+  finishEndpoint('ws://127.0.0.1:1');
+  await pending;
+  assert.equal(service.sessions.size,0);
 });

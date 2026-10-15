@@ -23,6 +23,15 @@ export class NativeIntercom {
     this.ws = null;
     this.pendingPCM = Buffer.alloc(0);
     this.decoderError = '';
+    this.startedAt = Date.now();
+    this.aacBytes = 0;
+    this.pcmBytes = 0;
+    this.beforeReadyBytes = 0;
+  }
+
+  diagnostic(event, fields = {}) {
+    console.log('[protect-talkback] ' + JSON.stringify({ at: new Date().toISOString(),
+      room: this.speaker, event, elapsedMs: Date.now() - this.startedAt, ...fields }));
   }
 
   open() {
@@ -36,9 +45,9 @@ export class NativeIntercom {
         if (this.ws.readyState === WebSocket.OPEN) this.ws.ping();
       }, 3000);
       this.heartbeat.unref?.();
-      this.ws.on('open', () => this.ws.send(JSON.stringify({ type: 'start', room: this.speaker,
+      this.ws.on('open', () => { this.diagnostic('bridge-connected'); this.ws.send(JSON.stringify({ type: 'start', room: this.speaker,
         format: 's16le', rate: 44100, channels: 2,
-        volume: this.options.volume ?? this.config.volume ?? 35, muted: this.options.muted ?? false })));
+        volume: this.options.volume ?? this.config.volume ?? 35, muted: this.options.muted ?? false })); });
       this.ws.on('message', (data, binary) => {
         if (binary || this.closed) return;
         let message;
@@ -48,11 +57,12 @@ export class NativeIntercom {
           this.ready = true;
           clearTimeout(this.timer);
           this.startDecoder();
+          this.diagnostic('speaker-ready');
           resolve(this);
         }
       });
       this.ws.on('error', error => this.fail(error));
-      this.ws.on('close', () => { if (!this.closed) this.fail(new Error('Native Sonos session closed')); });
+      this.ws.on('close', (code) => { if (!this.closed) this.fail(new Error(`Native Sonos session closed (${code})`)); });
     });
   }
 
@@ -66,6 +76,8 @@ export class NativeIntercom {
       if (this.ws.bufferedAmount > 35280) return this.fail(new Error('Native audio connection is congested'));
       const data = this.pendingPCM.length ? Buffer.concat([this.pendingPCM, chunk]) : chunk;
       const length = data.length - data.length % 4;
+      if (!this.pcmBytes && length) this.diagnostic('first-decoded-pcm', { bytes: length });
+      this.pcmBytes += length;
       this.pendingPCM = Buffer.from(data.subarray(length));
       for (let offset = 0; offset < length; offset += 8192) {
         this.ws.send(data.subarray(offset, Math.min(offset + 8192, length)), { binary: true }, error => {
@@ -82,7 +94,11 @@ export class NativeIntercom {
   }
 
   writeAAC(data) {
-    if (this.closed || !this.ready || !this.decoder) return;
+    if (this.closed) return;
+    if (!this.ready || !this.decoder) { this.beforeReadyBytes += data.length; return; }
+    if (!this.aacBytes && data.length) this.diagnostic('first-microphone-audio', {
+      bytes: data.length, adtsSync: data.length >= 2 && data[0] === 255 && (data[1] & 246) === 240 });
+    this.aacBytes += data.length;
     if (data.length > 256 * 1024 || this.decoder.stdin.writableLength > 32768) {
       return this.fail(new Error('Microphone audio input is congested'));
     }
@@ -100,6 +116,8 @@ export class NativeIntercom {
   close(error) {
     if (this.closed) return;
     this.closed = true;
+    this.diagnostic('native-closed', { ready: this.ready, aacBytes: this.aacBytes,
+      pcmBytes: this.pcmBytes, beforeReadyBytes: this.beforeReadyBytes, error: error?.message });
     clearTimeout(this.timer); clearInterval(this.heartbeat);
     this.decoder?.stdin.destroy();
     this.decoder?.kill('SIGTERM');

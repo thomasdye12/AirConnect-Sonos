@@ -4,31 +4,58 @@
 +import { NativeIntercom, loadIntercomConfig } from './airconnect-intercom.js';
 @@ -19,0 +21 @@
 +    this.nativeConfig = options.nativeConfig ?? loadIntercomConfig();
-@@ -37 +39,4 @@
+@@ -26,0 +29,4 @@
++    const startedAt = Date.now();
++    const diagnostic = (event, fields = {}) => console.log('[protect-talkback] ' + JSON.stringify({
++      at: new Date().toISOString(), room: sonosSpeaker || null, event, elapsedMs: Date.now() - startedAt, ...fields }));
++    diagnostic('client-connected');
+@@ -29,0 +36 @@
++    if (client.readyState !== WebSocket.OPEN) { diagnostic('client-left-before-endpoint'); return; }
+@@ -30,0 +38 @@
++    diagnostic('camera-endpoint-ready');
+@@ -37 +45,8 @@
 -    const sonosSession = sonosSpeaker ? this.createSonosSession(sonosSpeaker) : null;
 +    const native = sonosSpeaker && this.nativeConfig ? new NativeIntercom(this.nativeConfig, sonosSpeaker, {
-+      onError: error => { console.error('[protect-talkback] native:', error.message); close(1011, 'Native Sonos failed'); }
++      onError: error => {
++        console.error('[protect-talkback] native:', error.message);
++        if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'error', message: error.message }));
++        close(1011, 'Native Sonos failed');
++      }
 +    }) : null;
 +    const sonosSession = sonosSpeaker && !native ? this.createSonosSession(sonosSpeaker) : null;
-@@ -42,0 +48 @@
+@@ -38,0 +54 @@
++    let microphoneBytes = 0, ignoredMessages = 0;
+@@ -42,0 +59,2 @@
++      diagnostic('client-closed', { code, reason, microphoneBytes, ignoredMessages });
 +      native?.close();
-@@ -49 +55 @@
+@@ -49 +67,2 @@
 -      if (!sonosSession && client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'ready' }));
++      diagnostic('camera-connected');
 +      if (!sonosSession && !native && client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'ready' }));
-@@ -53 +59 @@
+@@ -53 +72 @@
 -      if (!sonosSession) close(1011, 'Protect talkback failed');
 +      if (!sonosSession && !native) close(1011, 'Protect talkback failed');
-@@ -56 +62 @@
+@@ -56,3 +75,3 @@
 -      if (!sonosSession) close(1000, 'Protect talkback closed');
+-    });
+-    client.once('close', () => close());
 +      if (!sonosSession && !native) close(1000, 'Protect talkback closed');
-@@ -66,0 +73 @@
++    });
++    client.once('close', (code) => { diagnostic('client-disconnected', { code }); close(); });
+@@ -64 +83,2 @@
+-      if (!isBinary || data.length === 0 || data.length > MAX_AUDIO_FRAME) return;
++      if (!isBinary || data.length === 0 || data.length > MAX_AUDIO_FRAME) { ignoredMessages++; return; }
++      microphoneBytes += data.length;
+@@ -67 +87,14 @@
+-    });
 +      native?.writeAAC(data);
-@@ -67,0 +75,11 @@
++    });
 +    if (native) {
 +      try {
 +        await native.open();
 +        if (closed || client.readyState !== WebSocket.OPEN) { native.close(); return; }
 +        client.send(JSON.stringify({ type: 'ready', sonosSpeaker, transport: 'native-udp' }));
++        diagnostic('client-ready');
 +      } catch (error) {
 +        console.error('[protect-talkback] native setup:', error.message);
 +        if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'error', message: error.message }));
