@@ -1,5 +1,6 @@
 general = {
   name = "Example Room (AirPlay 2 Test)";
+  service_type = "airplay2";
   output_backend = "airconnect";
   port = 7100;
   nqptp_shared_memory_interface_name = "/nqptp-airconnect-example";

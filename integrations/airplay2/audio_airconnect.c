@@ -32,6 +32,10 @@ static void finish_locked(void) {
         while((r=waitpid(child,&status,WNOHANG))==0 && mono_ns()<deadline) {
             struct timespec delay={0,100000000};nanosleep(&delay,NULL);
         }
+        if(r>0 && WIFEXITED(status) && WEXITSTATUS(status))
+            warn("AirConnect worker exited with status %d.",WEXITSTATUS(status));
+        if(r>0 && WIFSIGNALED(status))
+            warn("AirConnect worker terminated by signal %d.",WTERMSIG(status));
         if(r==0) {
             warn("AirConnect worker did not restore within deadline; terminating. Check speaker state.");
             kill(child,SIGTERM);deadline=mono_ns()+3000000000ULL;
@@ -55,7 +59,9 @@ static int send_all(const void *data,size_t size) {
     return 0;
 }
 static int init(int argc,char **argv) {
-    (void)argv;if(argc)return -1;
+    /* Pinned Shairport forwards CLI arguments here and ignores init's return
+     * value. This config-only backend must initialise even when argc != 0. */
+    (void)argc;(void)argv;
     if(!config.cfg || !config_lookup_string(config.cfg,"airconnect.worker",&worker) ||
        !config_lookup_string(config.cfg,"airconnect.helper",&helper) ||
        !config_lookup_string(config.cfg,"airconnect.local_ip",&local_ip) ||
@@ -85,7 +91,7 @@ static int prepare(void) {
     char *args[]={(char*)worker,(char*)helper,(char*)local_ip,(char*)receiver_url,(char*)receiver_udn,vol,mute,NULL};
     int rc=posix_spawn(&child,worker,&actions,NULL,args,environ);
     posix_spawn_file_actions_destroy(&actions);
-    if(rc){child=-1;goto bad;}
+    if(rc){warn("AirConnect worker could not start: %s.",strerror(rc));child=-1;goto bad;}
     close(input[0]);input[0]=-1;close(output[1]);output[1]=-1;
     fd=input[1];input[1]=-1;status_fd=output[0];output[0]=-1;
     fcntl(fd,F_SETFL,fcntl(fd,F_GETFL)|O_NONBLOCK);
@@ -153,7 +159,9 @@ static void flush(void) {
 static void stop(void){int cancellation;pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,&cancellation);pthread_mutex_lock(&lock);finish_locked();pthread_mutex_unlock(&lock);pthread_setcancelstate(cancellation,NULL);}
 static int is_running(void) {
     pthread_mutex_lock(&lock);
-    if(child>0){int status;if(waitpid(child,&status,WNOHANG)==child){child=-1;failed=1;}}
+    if(child>0){int status;pid_t r=waitpid(child,&status,WNOHANG);
+        /* Shairport's SIGCHLD handler may already have reaped this child. */
+        if(r==child || (r<0 && errno==ECHILD)){child=-1;failed=1;}}
     int result=failed;pthread_mutex_unlock(&lock);
     if(result)die("AirConnect output failed; stopping receiver. See worker diagnostics.");
     return result;

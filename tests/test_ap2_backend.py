@@ -48,7 +48,8 @@ Path(sys.argv[1]).write_text(json.dumps(frames))
             d=Path(directory); worker=d/'lost-worker'
             worker.write_text('#!/bin/sh\nprintf "READY\\n"\nexit 7\n');worker.chmod(0o700)
             cfg=d/'config';cfg.write_text('airconnect = { worker='+json.dumps(str(worker))+'; helper="/unused"; local_ip="127.0.0.1"; receiver_url="unused"; receiver_udn="unused"; };')
-            result=subprocess.run([str(ROOT/'tests/bin/test_ap2_backend'),str(cfg),'lost'],capture_output=True,text=True,timeout=5)
-            self.assertEqual(result.returncode,10,result.stderr)
-            self.assertIn('output failed',result.stderr)
+            for mode in ('lost','reaped'):
+                result=subprocess.run([str(ROOT/'tests/bin/test_ap2_backend'),str(cfg),mode],capture_output=True,text=True,timeout=5)
+                self.assertEqual(result.returncode,10,result.stderr)
+                self.assertIn('output failed',result.stderr)
 if __name__=='__main__':unittest.main()

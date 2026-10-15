@@ -2,19 +2,46 @@
   "status": "experimental; live AirPlay 2 speaker playback not yet validated",
   "date": "2026-10-15",
   "builds": {
-    "macos_arm64": ["Shairport Sync with AirConnect backend", "NQPTP", "timed native worker"],
-    "macos_x86_64_10_13_isolated_prefix": ["Shairport Sync with AirConnect backend", "NQPTP", "timed native worker"]
+    "macos_arm64": [
+      "Shairport Sync with AirConnect backend",
+      "NQPTP",
+      "timed native worker"
+    ],
+    "macos_x86_64_10_13_isolated_prefix": [
+      "Shairport Sync with AirConnect backend",
+      "NQPTP",
+      "timed native worker"
+    ],
+    "linux_armv7_glibc_2_19": [
+      "Shairport Sync with AirConnect backend",
+      "NQPTP",
+      "timed native worker"
+    ]
   },
   "offline": {
     "timeline_asan_ubsan": "passed: deadline placement, continuity, flush, late input, overflow, ring wrap",
     "backend_ipc": "passed: fixed format, clock-domain conversion, untimed silence exclusion, framed PCM, flush and close",
     "backend_failures": "passed: preparation failure and worker loss terminate the experimental receiver",
-    "simulated_sonos_lifecycle": "passed: normal restoration, delayed topology, non-converging topology, failed promotion, busy helper"
+    "simulated_sonos_lifecycle": "passed: normal restoration, delayed topology, non-converging topology, failed promotion, busy helper",
+    "timeline_linux_armv7": "passed: native 32-bit compiler/runtime",
+    "backend_linux_armv7": "passed: real backend, framed IPC, clock conversion, prepare failure and worker loss; Python 3.4 test-runner compatibility shim",
+    "backend_cli_initialization": "passed: forwarded nonempty CLI arguments still load backend configuration"
   },
   "live": {
     "initial_development_host_preflight": "speaker control endpoint unreachable; refused before changing speaker state",
-    "lan_host_build": "completed; runtime timing daemon started",
-    "native_pcm_and_iphone": "pending controlled test"
+    "lan_host_build": "completed; temporary timing daemon stopped after moving the experiment to the bridge host",
+    "native_pcm_and_iphone": "native muted PCM passed; initial iPhone attempt failed during backend initialization; fix deployed, audible retry pending",
+    "bridge_host_muted_pcm": {
+      "status": "passed; no acoustic claim",
+      "duration_seconds": 20,
+      "received_frames": 882000,
+      "late_input_frames": 0,
+      "flushes": 1,
+      "receiver_restore": "verified",
+      "helper_restore": "verified"
+    },
+    "bridge_host_discovery": "Bonjour AirPlay service resolution and RTSP OPTIONS verified from a separate LAN host",
+    "bridge_host_rtsp_setup": "passed after initialization fix: local muted AirPlay 2 SETUP and TEARDOWN, worker ready, helper and receiver restoration verified"
   },
   "limitations": [
     "Real Sonos helper still required",

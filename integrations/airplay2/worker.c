@@ -64,13 +64,13 @@ int main(int argc,char **argv) {
     setvbuf(stdout,NULL,_IOLBF,0);
     if(strlen(argv[1])>=sizeof(glNativeHelperConfig))return 2;
     strcpy(glNativeHelperConfig,argv[1]);
-    if(sonos_native_load_helper())return 3;
+    if(sonos_native_load_helper()){fprintf(stderr,"ap2 worker: could not load helper configuration\n");return 3;}
     struct sonos_native_device *device=sonos_native_device_new(argv[2],argv[3],argv[4],(int)muted);
-    if(!device)return 4;
+    if(!device){fprintf(stderr,"ap2 worker: invalid receiver configuration\n");return 4;}
     sonos_native_volume(device,(int)volume);
     raop_pcm_output_t out=sonos_native_output(device);
     void *session=out.open(out.owner,&running);
-    if(!session){sonos_native_device_free(device);return 5;}
+    if(!session){char error[192];sonos_native_get_error(device,error,sizeof(error));fprintf(stderr,"ap2 worker: could not open receiver: %s\n",error);sonos_native_device_free(device);return 5;}
     uint8_t pcm[1004]={0};uint64_t start=now_ns(),report=start;int ready=0,rc=0;
     /* The sender's first submission establishes its clock; match its 75 ms lead. */
     ap2_timeline_init(&queue,start+75000000);
