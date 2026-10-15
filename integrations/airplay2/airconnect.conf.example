@@ -1,0 +1,15 @@
+general = {
+  name = "Example Room (AirPlay 2 Test)";
+  output_backend = "airconnect";
+  port = 7100;
+  nqptp_shared_memory_interface_name = "/nqptp-airconnect-example";
+};
+airconnect = {
+  worker = "/absolute/path/airconnect-ap2-worker";
+  helper = "/absolute/path/native-helper.json";
+  local_ip = "192.0.2.10";
+  receiver_url = "http://192.0.2.30:1400/xml/device_description.xml";
+  receiver_udn = "uuid:RINCON_02000000000101400";
+  speaker_volume = 25;
+  muted = true;
+};

@@ -90,7 +90,7 @@ class NativeControl(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 helper = Path(directory) / 'helper.json'
                 helper.write_text(json.dumps({'version': 1, 'helper': {'address': B, 'uuid': UB, 'name': 'Test helper'}}))
-                driver = Path(__file__).parent / 'bin/native_output_driver'
+                driver = Path(os.environ.get('NATIVE_TEST_DRIVER', str(Path(__file__).parent / 'bin/native_output_driver')))
                 command = [str(driver), str(helper), A, 'http://' + A + ':1400/xml/device_description.xml', 'uuid:' + UA, '7', '25']
                 run = subprocess.run(command, capture_output=True, text=True, timeout=25)
                 self.assertEqual(run.returncode, 0, run.stderr)
