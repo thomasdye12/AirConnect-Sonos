@@ -1,0 +1,21 @@
+[Unit]
+Description=AirConnect authenticated native intercom input
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /var/airplay_sonos/intercom/airconnect_intercom.py --config /var/airplay_sonos/intercom/config.json
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=35
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+RuntimeDirectory=airconnect-intercom
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

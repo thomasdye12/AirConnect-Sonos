@@ -259,6 +259,20 @@ class Collector:
         check = system_status()
         if check.get('pid') != service.get('pid') or check.get('running') != service.get('running'):
             service, leases, ownership_known = check, [], False
+        intercom = {'available': False, 'sessions': [], 'recent': []}
+        try:
+            with open('/run/airconnect-intercom/status.json', 'rb') as stream:
+                intercom = read_json(stream)
+            intercom['available'] = True
+            intercom['stale'] = time.time() - intercom.get('updated_at', 0) > 15
+            if not intercom['stale']:
+                for session in intercom.get('sessions', []):
+                    try:
+                        leases = sorted(set(leases + held_devices(session.get('worker_pid'))))
+                    except OSError:
+                        pass
+        except (OSError, ValueError):
+            pass
         rooms, api = self.room_snapshot(config)
         for room in rooms:
             settings = dict(config['defaults'])
@@ -271,6 +285,9 @@ class Collector:
             room['phase'] = None
             if room['session_held']:
                 room['phase'] = logs['sessions'].get(room['address'], {}).get('phase', 'Setup / session / restore')
+                for session in intercom.get('sessions', []):
+                    if session.get('uuid') == room['uuid'] and not intercom.get('stale', True):
+                        room['phase'] = 'Intercom · ' + session.get('state', 'unknown')
         # Preserve held devices missing from an old API/cache snapshot.
         known = {r['uuid'] for r in rooms}
         unknown = [uid for uid in leases if uid not in known and uid != helper.get('uuid')]
@@ -280,7 +297,7 @@ class Collector:
         helper['held'] = helper.get('uuid') in leases if ownership_known else None
         count = len([uid for uid in leases if uid != helper.get('uuid')]) if ownership_known else None
         return {'ready': True, 'collected_at': time.time(), 'service': service, 'config': config,
-                'helper': helper, 'rooms': rooms, 'api': api, 'logs': logs, 'errors': errors,
+                'helper': helper, 'rooms': rooms, 'api': api, 'logs': logs, 'errors': errors, 'intercom': intercom,
                 'native_sessions': count, 'unknown_sessions': unknown,
                 'host': {'hostname': socket.gethostname(), 'load': list(os.getloadavg())}}
 

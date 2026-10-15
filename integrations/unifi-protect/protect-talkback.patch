@@ -1,0 +1,37 @@
+--- a/protect-talkback.js
++++ b/protect-talkback.js
+@@ -3,0 +4 @@
++import { NativeIntercom, loadIntercomConfig } from './airconnect-intercom.js';
+@@ -19,0 +21 @@
++    this.nativeConfig = options.nativeConfig ?? loadIntercomConfig();
+@@ -37 +39,4 @@
+-    const sonosSession = sonosSpeaker ? this.createSonosSession(sonosSpeaker) : null;
++    const native = sonosSpeaker && this.nativeConfig ? new NativeIntercom(this.nativeConfig, sonosSpeaker, {
++      onError: error => { console.error('[protect-talkback] native:', error.message); close(1011, 'Native Sonos failed'); }
++    }) : null;
++    const sonosSession = sonosSpeaker && !native ? this.createSonosSession(sonosSpeaker) : null;
+@@ -42,0 +48 @@
++      native?.close();
+@@ -49 +55 @@
+-      if (!sonosSession && client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'ready' }));
++      if (!sonosSession && !native && client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'ready' }));
+@@ -53 +59 @@
+-      if (!sonosSession) close(1011, 'Protect talkback failed');
++      if (!sonosSession && !native) close(1011, 'Protect talkback failed');
+@@ -56 +62 @@
+-      if (!sonosSession) close(1000, 'Protect talkback closed');
++      if (!sonosSession && !native) close(1000, 'Protect talkback closed');
+@@ -66,0 +73 @@
++      native?.writeAAC(data);
+@@ -67,0 +75,11 @@
++    if (native) {
++      try {
++        await native.open();
++        if (closed || client.readyState !== WebSocket.OPEN) { native.close(); return; }
++        client.send(JSON.stringify({ type: 'ready', sonosSpeaker, transport: 'native-udp' }));
++      } catch (error) {
++        console.error('[protect-talkback] native setup:', error.message);
++        if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify({ type: 'error', message: error.message }));
++        close(1011, 'Native Sonos setup failed');
++      }
++    }

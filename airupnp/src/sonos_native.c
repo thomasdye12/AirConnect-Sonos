@@ -287,7 +287,8 @@ static void *control(void *arg) {
                 if(action(helper_ip,"GroupManagement","RemoveMember",remove) || basic(helper_ip,"BecomeCoordinatorOfStandaloneGroup") || !separated(s))goto fail;
             }
             if(restore(helper_ip,helper_id,&s->helper,0))goto fail;
-            s->helper_released=1;release(&s->helper_lock);promoted=1;
+            release(&s->helper_lock);
+            pthread_mutex_lock(&s->mutex);s->helper_released=1;pthread_mutex_unlock(&s->mutex);promoted=1;
             LOG_INFO("native helper released; independent PCM continues for %s",d->ip);
         }
         delay_ms(100);
@@ -364,4 +365,9 @@ raop_pcm_output_t sonos_native_output(struct sonos_native_device *d) {
 void sonos_native_volume(struct sonos_native_device *d,int volume) {
     if(!d)return;
     pthread_mutex_lock(&d->mutex);d->volume=volume<0?0:volume>100?100:volume;pthread_mutex_unlock(&d->mutex);
+}
+int sonos_native_session_ready(void *ctx) {
+    struct session *s=ctx;
+    pthread_mutex_lock(&s->mutex);int ready=s->helper_released && !s->failed;pthread_mutex_unlock(&s->mutex);
+    return ready;
 }

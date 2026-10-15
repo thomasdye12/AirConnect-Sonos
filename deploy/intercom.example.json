@@ -1,0 +1,14 @@
+{
+  "bind": "192.0.2.10",
+  "port": 8089,
+  "allowed_clients": ["192.0.2.20"],
+  "token_file": "/var/airplay_sonos/intercom/access.key",
+  "worker": "/var/airplay_sonos/intercom/airconnect-intercom-worker",
+  "helper_config": "/var/airplay_sonos/native-helper.json",
+  "status_file": "/run/airconnect-intercom/status.json",
+  "log": "/var/log/airconnect-intercom.log",
+  "max_volume": 100,
+  "rooms": [
+    {"name": "Example room", "uuid": "RINCON_02000000000101400", "address": "192.0.2.30"}
+  ]
+}

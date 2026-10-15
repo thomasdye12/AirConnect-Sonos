@@ -17,6 +17,8 @@ Based on AirConnect v1.12.4 at [`5fdb61e`](https://github.com/philippe44/AirConn
 
 ## Local web dashboard
 
+Native microphone ingress is also available through the [Protect intercom integration](integrations/unifi-protect/README.md). It adds an authenticated PCM WebSocket on a separate port, reuses native Sonos setup/timing/restoration, and displays intercom sessions in the dashboard. It does not require an AirPlay connection.
+
 The optional [read-only dashboard](tools/airconnect_dashboard.py) runs independently of audio playback, using Python 3.4+ and its standard library. It shows service health, room names and saved output settings, per-room sync offsets, native session ownership, Sonos-reported volume/track state, recent completed-session counters and a filtered event log. The responsive page includes an explanation of the audio path and a JSON diagnostics download.
 
 On the bridge, from this checkout:

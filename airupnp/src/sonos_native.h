@@ -9,3 +9,5 @@ struct sonos_native_device *sonos_native_device_new(const char *local, const cha
 void sonos_native_device_free(struct sonos_native_device *d);
 raop_pcm_output_t sonos_native_output(struct sonos_native_device *d);
 void sonos_native_volume(struct sonos_native_device *d, int volume);
+/* True after independent receiver promotion and helper restoration. */
+int sonos_native_session_ready(void *session);
