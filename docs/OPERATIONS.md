@@ -34,7 +34,7 @@ sudo python3 -m json.tool /run/airconnect-intercom/status.json
 
 Intercom status contains current sessions and the last ten completed sessions from this service process. Restarting clears that history. Look for `state`, `error`, `exit_code`, `received_bytes`, `output_frames`, `queued_frames`, `silence_frames`, `dropped_frames` and `recoveries`. Counters may be absent before a worker has reported them. A zero exit and no error indicate clean worker completion; they do not prove the user chose to stop or that all audio was audible.
 
-For Protect, inspect the application's existing stdout/stderr logs for `[protect-talkback]`. The sequence should include client connection, camera endpoint lookup, bridge/camera connection, speaker readiness, client readiness, first microphone bytes and first decoded PCM. Closure events include byte counts and WebSocket close codes. Code `1001` means the client went away; it does not distinguish a deliberate button press from app/background/network behavior. Runtime bridge failures are reported separately.
+For external audio sources, correlate the sender's connection logs with bridge readiness, received-byte counters and closure errors. A WebSocket client closing with code `1001` means it went away; this does not establish whether the user deliberately stopped it. Runtime bridge failures are reported separately.
 
 The AirPlay example caps its log at 5 MB. Include the intercom log in your host's log-rotation policy. Dashboard diagnostics and logs can contain household names, IP addresses and device identities; redact them before opening an issue. Never share the bearer key or private configuration.
 
@@ -49,8 +49,8 @@ The AirPlay example caps its log at 5 MB. Include the intercom log in your host'
 | Helper configuration rejected | Run `helper-show`; verify TCP 1400 reachability and re-run `helper-set --address HELPER_IP` after an IP change. Use a different receiver from the helper. |
 | Group setup or restoration failed | Read the named setup stage and each device's own topology. Wait for the current operation to finish. Inspect the Sonos app before retrying; a successful control reply alone does not establish membership. |
 | Intercom HTTP 401/403 or socket rejection | Check bearer key matches, `allowed_clients` includes the actual source IP, correct LAN bind/port, and no browser Origin header. Do not put the secret in a URL. |
-| WebSocket connects but no sound | Wait for `ready`; inspect first microphone/decoded PCM events. Confirm ADTS AAC at Protect ingress, FFmpeg path and room mapping. Check mute/volume and rising bytes; then arrange an audible check. |
-| Connection closes around setup | Correlate client, camera endpoint and bridge events. A client disconnect during lookup now cancels setup. Do not treat a transient app warning as proof the bridge failed. |
+| WebSocket connects but no sound | Wait for `ready`; verify that the sender supplies the required PCM format and selects a configured room. Check mute/volume and rising bytes; then arrange an audible check. |
+| Connection closes around setup | Correlate sender and bridge events. Check for setup errors or client cancellation before readiness. |
 | `PCM input congested`, native timeout or dropouts | Preserve the underlying native error and counters. Inspect host CPU/load, network and decoder backpressure. Current intercom tolerates bounded short stalls, not sustained overload. More buffering is not a general fix. |
 | UDP flowing but speaker reports paused | This was observed during working listening tests. Check actual sound and native clock/packet evidence; Sonos transport state alone is inconclusive. |
 | Audio/video offset | Calibrate `native_sync_offset_ms` with the same source and receiver, then reconnect. Positive delays audio. Keep startup, steady-state sync and pause tail measurements separate. |
@@ -65,10 +65,9 @@ Record the running commit/release, compiler target, configuration and service st
 - **AirPlay:** use the existing-installation procedure in [INSTALL.md](INSTALL.md#upgrading-an-existing-installation). `install-cloudkey.sh` backs up the old binary, XML and controller under `/srv/airconnect-backups/` and prints its rollback path. It does not install a new service unit or update other components. Review/run the generated rollback for that specific backup if needed.
 - **Dashboard:** use `deploy/install-dashboard.sh`; its backup includes files, environment, unit and previous enabled/active state. Its generated rollback affects the dashboard only.
 - **Intercom:** stop `airconnect-intercom.service`, privately back up its directory and unit, replace the built worker/Python script (and unit if changed), run `systemctl daemon-reload` if the unit changed, then start it. Preserve the existing credential and room/helper configuration. Restore that backup to roll back.
-- **Protect adapter:** back up the module/config before applying the integration patch. Set `enabled` to false and restart Protect to select its existing HTTP Sonos route. Native failure does not automatically start a competing HTTP session.
 
 To disable native AirPlay, use `native-mode --enabled 0` and restart; existing per-device overrides survive, so inspect those too. To stop intercom, stop its service and allow graceful restoration. Do not force-kill workers as routine cleanup.
 
 ## Reporting a failure
 
-Include the component, commit/release, OS/architecture, room model, rough time, how long setup/playback lasted, and whether the client closed itself or reported an error. Include redacted logs from both Protect and the bridge, the final session counters, and whether speaker restoration succeeded. State whether the test was muted, heard by a listener, or measured acoustically. This makes an app disconnect distinguishable from a decoder, native transport or speaker failure.
+Include the component, commit/release, OS/architecture, room model, rough time, how long setup/playback lasted, and whether the client closed itself or reported an error. Include redacted logs from both the sending application and the bridge, the final session counters, and whether speaker restoration succeeded. State whether the test was muted, heard by a listener, or measured acoustically. This makes an app disconnect distinguishable from a decoder, native transport or speaker failure.

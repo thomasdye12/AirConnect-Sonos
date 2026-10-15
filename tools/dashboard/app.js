@@ -76,7 +76,7 @@ function render(data) {
   set('logInfo', 'Latest events first · device log time · ' + (data.logs.has_start_marker ? 'since last available startup' : 'partial log window') + (data.logs.modified_at ? ' · last write ' + time(data.logs.modified_at) : ''));
   set('host', data.host.hostname + ' · load ' + data.host.load[0].toFixed(2) + ' · refresh 5s / rooms 15s');
   const intercom = data.intercom || {available: false, sessions: [], recent: []};
-  set('intercomState', !intercom.available ? 'Input service not available' : intercom.stale ? 'Input status is stale' : 'Input online · ' + intercom.sessions.length + ' session(s) · source: Protect intercom');
+  set('intercomState', !intercom.available ? 'Input service not available' : intercom.stale ? 'Input status is stale' : 'Input online · ' + intercom.sessions.length + ' session(s) · source: PCM intercom');
   records('intercomSessions', [...intercom.sessions, ...intercom.recent.slice(-3).reverse()].map(i => ({...i, log_time: time(i.ended_at || i.started_at)})), i => i.room + ' · ' + i.state + (i.muted ? ' · muted' : '') + (i.error ? ' · ' + i.error : ''), [['received_bytes', 'PCM bytes'], ['dropped_frames', 'dropped frames'], ['queued_frames', 'queued frames']]);
   renderRooms(); renderEvents();
   records('completed', data.logs.completed, i => i.room, [['packets','packets'],['late','late'],['clocks','clock requests'],['signal_frames','signal frames']]);

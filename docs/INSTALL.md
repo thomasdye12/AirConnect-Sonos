@@ -154,7 +154,7 @@ It is a read-only LAN monitor, not a control panel: it cannot change volume, sta
 
 ## 6. Install the optional intercom
 
-Follow [the intercom guide](../integrations/unifi-protect/README.md#bridge-installation). It includes the separate worker/service installation, credential creation, room configuration, Protect adapter, a muted test and the generic WebSocket protocol. Intercom does not require an active AirPlay connection, but it needs the same configured real helper.
+Follow [the intercom guide](INTERCOM.md#bridge-installation). It covers the separate service, room configuration and generic WebSocket input. Intercom does not require an active AirPlay connection, but it needs the same configured real helper.
 
 If running HTTP AirPlay alongside intercom, reserve the helper yourself: it is automatically hidden only when native mode is enabled for it/common settings. Intercom and native AirPlay share ownership locks on this host; the legacy HTTP path and unrelated third-party controllers do not participate in those locks.
 

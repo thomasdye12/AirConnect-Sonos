@@ -1,9 +1,13 @@
 # Fork changes
 
+## Public documentation cleanup — 2026-10-15
+
+- Generalized intercom documentation and dashboard wording. Removed application-specific adapter files, patches and tests from the public tree; documented the standalone PCM input instead. Runtime services are unchanged.
+
 ## Current source — 2026-10-15 (after tds4; no new binary release)
 
 - Added the separate authenticated PCM WebSocket intercom service and native C worker, explicit room/IP admission, bounded queues, shared native leases, status and graceful restoration.
-- Added the Protect AAC/FFmpeg adapter and integration patch, preserving camera talkback and waiting for speaker readiness. Connection diagnostics distinguish client, camera, decoder and bridge failures; cancellation during camera lookup no longer starts a native session afterwards.
+- Added live intercom input with readiness gating and connection diagnostics. External applications can send PCM without using AirPlay.
 - Added the separate read-only LAN dashboard, service/room/ownership views, recent intercom sessions and diagnostics, with an installer and component rollback.
 - Fixed helper-release checks to use each speaker's own topology and wait for detach propagation, avoiding false failure from an orphaned cached group.
 - Added intercom-only recovery for bounded scheduling stalls, stale PCM discard, a 750 ms pipe-backpressure bound and preservation of the underlying native error. Strict AirPlay pacing remains unchanged.

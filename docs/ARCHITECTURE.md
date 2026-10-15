@@ -53,7 +53,7 @@ The tds4 correction tracks a continuous submitted-sample cursor. Previously, com
 
 ## Intercom input
 
-The [intercom service](../integrations/unifi-protect/README.md) accepts PCM over an authenticated WebSocket. The Protect adapter receives AAC microphone frames, keeps the original camera forwarding path, and uses FFmpeg to decode audio before it reaches the bridge. Other applications can implement the same PCM contract without using Protect or AirPlay.
+The [intercom service](INTERCOM.md) accepts PCM over an authenticated WebSocket. An external application converts its audio to the required format and sends it after the bridge reports readiness. It does not require an AirPlay connection.
 
 The bridge checks the source IP, bearer credential, room and format before starting a separate C worker. It sends `ready` only after helper release/restoration. Microphone PCM must wait for that response. In this deployment, preparation commonly took about 5–8 seconds; this delay is separate from mouth-to-speaker latency.
 
@@ -78,7 +78,7 @@ The dashboard reads service/config/log information and local intercom status. It
 | `research/sonos-native/native/` | Native packet, clock and paced sender implementation; standalone tests |
 | `tools/intercom_worker.c` | PCM input queue and native intercom worker |
 | `tools/airconnect_intercom.py` | Authenticated WebSocket admission, worker supervision, status and cleanup |
-| `integrations/unifi-protect/` | AAC adapter, integration patch, tests and protocol documentation |
+| `docs/INTERCOM.md` | Generic intercom setup and PCM input contract |
 | `tools/airconnectctl.py` | Status, room list, helper/native settings and bounded research commands |
 | `tools/airconnect_dashboard.py`, `tools/dashboard/` | Read-only HTTP monitor and browser assets |
 | `deploy/` | Example configuration, Linux units and component installers |

@@ -10,7 +10,7 @@ This is a **modified fork of [Philippe's AirConnect](https://github.com/philippe
 | --- | --- |
 | Install the bridge from scratch or upgrade it | [Installation](docs/INSTALL.md) |
 | Understand the audio path and why a helper is needed | [How it works](docs/ARCHITECTURE.md) |
-| Send microphone audio from Protect or another application | [Intercom installation and protocol](integrations/unifi-protect/README.md) |
+| Send live audio from another application | [Intercom installation and protocol](docs/INTERCOM.md) |
 | Run it, change rooms, read logs or recover from a failure | [Operation and troubleshooting](docs/OPERATIONS.md) |
 | See what has actually been tested | [Validation and known limitations](docs/VALIDATION.md) |
 | Build or work on the code | [Build details](CUSTOM.md), [source map](docs/ARCHITECTURE.md#source-map) |
@@ -25,13 +25,13 @@ This is a **modified fork of [Philippe's AirConnect](https://github.com/philippe
 - Offers the original UPnP/HTTP audio path and an opt-in native Sonos UDP path.
 - Reuses one configurable Sonos helper to prepare different receivers, then releases it while each stream continues independently.
 - Provides a read-only HTTP dashboard with service health, room state, native ownership, recent sessions and diagnostics.
-- Accepts authenticated live PCM over WebSocket for intercom use. The included Protect adapter decodes microphone AAC with FFmpeg and retains camera talkback forwarding.
+- Accepts authenticated live PCM over WebSocket for intercom use. External applications can use the input independently of AirPlay.
 - Adds bounded queues, cleanup/restoration, connection diagnostics and short scheduling-stall recovery for intercom.
 
 ```mermaid
 flowchart LR
     I[iPhone AirPlay] --> A[AirConnect: decode audio]
-    M[Microphone / Protect] --> F[FFmpeg: AAC to PCM]
+    M[External audio source] --> F[Convert to PCM]
     F --> W[Authenticated WebSocket input]
     W --> N[Native Sonos sender]
     A --> N
