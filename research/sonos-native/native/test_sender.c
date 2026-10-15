@@ -3,12 +3,41 @@
 #include "sonos_packet.h"
 #include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 struct capture {int socket;uint8_t pcm[1004*20];};
+static void pause_ms(long ms) {struct timespec t={ms/1000,(ms%1000)*1000000};while(nanosleep(&t,&t)&&errno==EINTR){}}
+static uint64_t packet_timestamp(int rx,uint16_t expected) {
+    uint8_t packet[1032],pcm[1004];uint16_t seq;uint64_t ts;uint32_t pos;
+    ssize_t n=recv(rx,packet,sizeof(packet),0);assert(n>0);
+    assert(sonos_packet_decode(packet,(size_t)n,&seq,&ts,&pos,pcm,sizeof(pcm)));
+    assert(seq==expected && pos==(uint32_t)expected*1004);return ts;
+}
+static void test_recovery(int rx) {
+    struct sockaddr_in a; socklen_t len=sizeof(a);assert(!getsockname(rx,(struct sockaddr*)&a,&len));
+    uint8_t pcm[1004]={0};
+    for(int recovery=0;recovery<=1;++recovery) {
+        struct sonos_sender *s=sonos_sender_open("127.0.0.1","127.0.0.1",ntohs(a.sin_port),0,75000);assert(s);
+        if(recovery)sonos_sender_live_recovery(s,500000);
+        assert(!sonos_sender_write(s,pcm,sizeof(pcm)));uint64_t first=packet_timestamp(rx,0);
+        pause_ms(350);
+        int rc=sonos_sender_write(s,pcm,sizeof(pcm));
+        if(!recovery){assert(rc==-1 && errno==ETIMEDOUT);}
+        else {
+            assert(!rc);uint64_t resumed=packet_timestamp(rx,1);assert(resumed>first+300000);
+            assert(sonos_sender_recoveries(s)==1);
+            assert(!sonos_sender_write(s,pcm,sizeof(pcm)));uint64_t next=packet_timestamp(rx,2);
+            assert(next-resumed>=5691 && next-resumed<=5692);
+            pause_ms(700);assert(sonos_sender_write(s,pcm,sizeof(pcm))==-1 && errno==ETIMEDOUT);
+        }
+        sonos_sender_close(s);
+    }
+}
 static void *receive_audio(void *arg) {
     struct capture *c=arg;
     for(int i=0;i<20;i++) {
@@ -43,7 +72,7 @@ int main(void) {
     }
     assert(!pthread_join(t,0));struct sonos_sender_stats stats;
     sonos_sender_get_stats(s,&stats);assert(stats.packets==20 && stats.clock_requests==1);
-    sonos_sender_close(s);close(rx);close(ntp);
+    sonos_sender_close(s);test_recovery(rx);close(rx);close(ntp);
     assert(!sonos_sender_open("invalid","127.0.0.1",7020,0,75000));
     return 0;
 }

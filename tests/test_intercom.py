@@ -39,6 +39,36 @@ def incoming(sock):
 
 
 class IntercomTests(unittest.TestCase):
+    def test_short_pipe_stall_recovers_but_sustained_congestion_is_bounded(self):
+        import fcntl
+        read_fd, write_fd = os.pipe()
+        fcntl.fcntl(write_fd, fcntl.F_SETFL, os.O_NONBLOCK)
+        pipe = os.fdopen(write_fd, 'wb', buffering=0)
+        session = m.Session(m.Manager({}), ROOM, 25, True)
+        session.process = mock.Mock(stdin=pipe)
+        session.process.poll.return_value = None
+        def fill():
+            total = 0
+            while True:
+                try: total += os.write(write_fd, b'\0' * 4096)
+                except BlockingIOError: return total
+        received = bytearray()
+        try:
+            count = fill(); payload = b'\1\0\1\0' * 2048
+            def drain():
+                time.sleep(.2)
+                while len(received) < count + len(payload): received.extend(os.read(read_fd, 4096))
+            thread = threading.Thread(target=drain); thread.start()
+            session.write(payload); thread.join(timeout=3)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(received[-len(payload):], payload)
+            fill()
+            with self.assertRaisesRegex(RuntimeError, '750 ms'): session.write(payload)
+            session.status['error'] = 'UDP sender: Connection timed out'
+            with self.assertRaisesRegex(RuntimeError, 'UDP sender'): session.write(payload)
+        finally:
+            pipe.close(); os.close(read_fd)
+
     def test_masked_pcm_and_ping(self):
         a, b = socket.socketpair()
         try:

@@ -33,7 +33,7 @@ struct sonos_native_device {
     char local[16], ip[16], id[32];
     char error[192];
     pthread_mutex_t mutex;
-    int volume, muted, active;
+    int volume, muted, active, live_recovery;
 };
 struct session {
     struct sonos_native_device *device;
@@ -276,7 +276,7 @@ static int wait_separated(struct session *s) {
 }
 static void failure(struct sonos_native_device *d,const char *stage) {
     pthread_mutex_lock(&d->mutex);
-    snprintf(d->error,sizeof(d->error),"Speaker setup failed: %s",stage);
+    snprintf(d->error,sizeof(d->error),"Native Sonos failed: %s",stage);
     pthread_mutex_unlock(&d->mutex);
     LOG_ERROR("native failure %s: %s",d->ip,stage);
 }
@@ -367,6 +367,7 @@ static void *session_open(void *owner, const volatile bool *running) {
     if(snapshot(helper_ip,helper_id,&s->helper))goto fail;
     stage="opening UDP sender";
     s->sender=sonos_sender_open(d->local,d->ip,7020,0,75000);if(!s->sender)goto fail;
+    if(d->live_recovery)sonos_sender_live_recovery(s->sender,500000);
     if(!*running)goto fail;
     s->changed=1;
     stage="muting receiver/helper for setup";
@@ -390,7 +391,15 @@ static int session_write(void *ctx,const uint8_t *pcm,size_t bytes) {
     pthread_mutex_lock(&s->mutex);int failed=s->failed;pthread_mutex_unlock(&s->mutex);
     if(failed)return -1;
     for(size_t i=0;i+3<bytes;i+=4) { s->pcm_frames++; if(pcm[i]||pcm[i+1]||pcm[i+2]||pcm[i+3])s->signal_frames++; }
-    return sonos_sender_write(s->sender,pcm,bytes);
+    uint64_t before=sonos_sender_recoveries(s->sender);
+    int rc=sonos_sender_write(s->sender,pcm,bytes);
+    if(rc) {
+        int error=errno;char reason[128];snprintf(reason,sizeof(reason),"UDP sender: %s (errno %d)",strerror(error),error);
+        failure(s->device,reason);errno=error;
+    } else if(sonos_sender_recoveries(s->sender)!=before) {
+        LOG_WARN("native sender %s recovered scheduling stall; timestamps rebased",s->device->ip);
+    }
+    return rc;
 }
 struct sonos_native_device *sonos_native_device_new(const char *local,const char *location,const char *udn,int muted) {
     if(!*helper_id || !udn || strncmp(udn,"uuid:",5) || !identity(udn+5) || sonos_native_is_helper(udn))return NULL;
@@ -416,3 +425,5 @@ int sonos_native_session_ready(void *ctx) {
 void sonos_native_get_error(struct sonos_native_device *d,char *buffer,size_t size) {
     pthread_mutex_lock(&d->mutex);snprintf(buffer,size,"%s",d->error);pthread_mutex_unlock(&d->mutex);
 }
+void sonos_native_live_recovery(struct sonos_native_device *d) {d->live_recovery=1;}
+uint64_t sonos_native_session_recoveries(void *ctx) {return sonos_sender_recoveries(((struct session*)ctx)->sender);}

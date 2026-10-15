@@ -14,6 +14,8 @@ struct sonos_sender {
     int audio,clock,stop;
     uint16_t clock_port,sequence;
     uint32_t position,lead_us;
+    uint32_t recovery_limit_us;
+    uint64_t recoveries;
     uint64_t base_us,frames;
     size_t pending;
     uint8_t pcm[SONOS_PCM_BYTES];
@@ -80,6 +82,8 @@ fail:
     pthread_mutex_destroy(&s->mutex);free(s);errno=e;return 0;
 }
 uint16_t sonos_sender_clock_port(struct sonos_sender *s) {return s?s->clock_port:0;}
+void sonos_sender_live_recovery(struct sonos_sender *s,uint32_t limit) {if(s)s->recovery_limit_us=limit>2000000?2000000:limit;}
+uint64_t sonos_sender_recoveries(struct sonos_sender *s) {return s?s->recoveries:0;}
 int sonos_sender_write(struct sonos_sender *s,const uint8_t *pcm,size_t n) {
     if(!s || (!pcm && n)){errno=EINVAL;return -1;}
     while(n) {
@@ -92,7 +96,10 @@ int sonos_sender_write(struct sonos_sender *s,const uint8_t *pcm,size_t n) {
         uint64_t now=now_us();
         /* Long producer stalls need explicit session recovery; never burst old
          * audio with expired timestamps into a receiver. */
-        if(now>deadline+250000){errno=ETIMEDOUT;return -1;}
+        if(now>deadline+250000) {
+            if(!s->recovery_limit_us || now-deadline>s->recovery_limit_us){errno=ETIMEDOUT;return -1;}
+            s->base_us+=now-deadline;deadline=now;++s->recoveries;
+        }
         uint8_t packet[SONOS_PACKET_BYTES];
         size_t length=sonos_packet_encode(packet,sizeof(packet),s->sequence,
             deadline+s->lead_us,s->position,s->pcm,sizeof(s->pcm));

@@ -143,15 +143,21 @@ class Session:
             self.manager.publish()
 
     def write(self, data):
-        # Reject congestion rather than accumulating stale speech in Python.
+        # Bound backpressure, but allow short worker scheduling stalls. The C
+        # worker bounds its queue and discards stale PCM on pacing recovery.
         view = memoryview(data)
-        deadline = time.monotonic() + .1
+        deadline = time.monotonic() + .75
         while view:
+            error = self.snapshot().get('error')
+            if error:
+                raise RuntimeError(error)
             if self.process.poll() is not None:
                 raise RuntimeError('Native sender stopped')
             remaining = deadline - time.monotonic()
-            if remaining <= 0 or not select.select([], [self.process.stdin], [], remaining)[1]:
-                raise RuntimeError('PCM input congested')
+            if remaining <= 0:
+                raise RuntimeError(self.snapshot().get('error') or 'PCM input congested for 750 ms')
+            if not select.select([], [self.process.stdin], [], min(remaining, .05))[1]:
+                continue
             try:
                 count = os.write(self.process.stdin.fileno(), view)
                 view = view[count:]
@@ -360,7 +366,8 @@ class Handler(BaseHTTPRequestHandler):
         except (OSError, EOFError, ValueError, RuntimeError) as exc:
             if session:
                 with session.lock:
-                    session.status['error'] = str(exc)
+                    session.status.setdefault('error', str(exc))
+                    exc = RuntimeError(session.status['error'])
             try:
                 send_json(self.connection, {'type': 'error', 'message': str(exc)})
                 send_frame(self.connection, 8, struct.pack('!H', 1011))

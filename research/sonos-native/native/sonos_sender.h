@@ -10,6 +10,11 @@ struct sonos_sender_stats { uint64_t packets, clock_requests, late_packets; };
 struct sonos_sender *sonos_sender_open(const char *local_ip,const char *peer_ip,
     uint16_t audio_port,uint16_t clock_port,uint32_t lead_us);
 uint16_t sonos_sender_clock_port(struct sonos_sender *s);
+/* Opt-in live intercom recovery. Set before writing; zero keeps strict pacing.
+ * A scheduling stall within this limit rebases future timestamps, without
+ * transmitting a burst of packets whose playback deadlines have expired. */
+void sonos_sender_live_recovery(struct sonos_sender *s,uint32_t max_lag_us);
+uint64_t sonos_sender_recoveries(struct sonos_sender *s);
 /* Blocking, paced write. Single producer; buffers incomplete 251-frame packets.
  * Returns 0 on success, -1 on error; errno is set. */
 int sonos_sender_write(struct sonos_sender *s,const uint8_t *pcm,size_t bytes);

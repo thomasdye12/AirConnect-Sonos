@@ -13,3 +13,6 @@ void sonos_native_volume(struct sonos_native_device *d, int volume);
 int sonos_native_session_ready(void *session);
 /* Last setup/control failure, copied under the device lock. */
 void sonos_native_get_error(struct sonos_native_device *d, char *buffer, size_t size);
+/* Enable only for the live intercom worker, before opening its session. */
+void sonos_native_live_recovery(struct sonos_native_device *d);
+uint64_t sonos_native_session_recoveries(void *session);
