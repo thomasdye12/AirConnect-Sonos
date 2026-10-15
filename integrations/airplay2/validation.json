@@ -30,7 +30,7 @@
   "live": {
     "initial_development_host_preflight": "speaker control endpoint unreachable; refused before changing speaker state",
     "lan_host_build": "completed; temporary timing daemon stopped after moving the experiment to the bridge host",
-    "native_pcm_and_iphone": "native muted PCM passed; initial iPhone attempt failed during backend initialization; fix deployed, audible retry pending",
+    "native_pcm_and_iphone": "iPhone connects after initialization fix, but user reports silence; acoustic playback remains unresolved",
     "bridge_host_muted_pcm": {
       "status": "passed; no acoustic claim",
       "duration_seconds": 20,
@@ -41,7 +41,17 @@
       "helper_restore": "verified"
     },
     "bridge_host_discovery": "Bonjour AirPlay service resolution and RTSP OPTIONS verified from a separate LAN host",
-    "bridge_host_rtsp_setup": "passed after initialization fix: local muted AirPlay 2 SETUP and TEARDOWN, worker ready, helper and receiver restoration verified"
+    "bridge_host_rtsp_setup": "passed after initialization fix: local muted AirPlay 2 SETUP and TEARDOWN, worker ready, helper and receiver restoration verified",
+    "iphone_retry": {
+      "status": "connected; user reports silence",
+      "received_frames": 3304982,
+      "late_input_frames": 0,
+      "native_signal_frames": 3290515,
+      "receiver_volume": 25,
+      "receiver_muted": false,
+      "receiver_restore": "verified",
+      "next_check": "Measure decoded and transmitted PCM level; nonzero frames alone do not establish audible output"
+    }
   },
   "limitations": [
     "Real Sonos helper still required",

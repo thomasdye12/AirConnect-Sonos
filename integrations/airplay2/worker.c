@@ -18,6 +18,17 @@ static pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 static struct ap2_timeline queue;
 static int input_error;
 static uint64_t received;
+static unsigned input_peak;
+static unsigned peak_s16le(const uint8_t *pcm,size_t bytes) {
+    unsigned peak=0;
+    for(size_t i=0;i+1<bytes;i+=2) {
+        int sample=pcm[i]|((unsigned)pcm[i+1]<<8);
+        if(sample>=32768)sample-=65536;
+        unsigned magnitude=sample<0?(unsigned)-sample:(unsigned)sample;
+        if(magnitude>peak)peak=magnitude;
+    }
+    return peak;
+}
 static void stop(int sig){(void)sig;running=false;}
 static uint64_t now_ns(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return (uint64_t)t.tv_sec*1000000000+t.tv_nsec;}
 static int read_all(void *data,size_t size) {
@@ -50,7 +61,7 @@ static void *ingest(void *unused) {
         pthread_mutex_lock(&mutex);
         if(type==AP2_FLUSH)ap2_timeline_flush(&queue);
         else if(ap2_timeline_push(&queue,pcm,n,ap2_get64(h+16)))input_error=1;
-        else received+=n;
+        else {received+=n;unsigned peak=peak_s16le(pcm,n*4);if(peak>input_peak)input_peak=peak;}
         pthread_mutex_unlock(&mutex);
         if(input_error)break;
     }
@@ -71,23 +82,24 @@ int main(int argc,char **argv) {
     raop_pcm_output_t out=sonos_native_output(device);
     void *session=out.open(out.owner,&running);
     if(!session){char error[192];sonos_native_get_error(device,error,sizeof(error));fprintf(stderr,"ap2 worker: could not open receiver: %s\n",error);sonos_native_device_free(device);return 5;}
-    uint8_t pcm[1004]={0};uint64_t start=now_ns(),report=start;int ready=0,rc=0;
+    uint8_t pcm[1004]={0};uint64_t start=now_ns(),report=start;int ready=0,rc=0;unsigned output_peak=0;
     /* The sender's first submission establishes its clock; match its 75 ms lead. */
     ap2_timeline_init(&queue,start+75000000);
     pthread_t reader;
     if(pthread_create(&reader,NULL,ingest,NULL)){out.close(session);sonos_native_device_free(device);return 6;}
     while(running) {
         pthread_mutex_lock(&mutex);ap2_timeline_render(&queue,pcm,251);pthread_mutex_unlock(&mutex);
+        unsigned peak=peak_s16le(pcm,sizeof(pcm));if(peak>output_peak)output_peak=peak;
         if(out.write(session,pcm,sizeof(pcm))){rc=7;break;}
         if(!ready && sonos_native_session_ready(session)) {ready=1;puts("READY");}
         uint64_t now=now_ns();
         if(!ready && now-start>20000000000ULL){rc=8;break;}
         if(now-report>=5000000000ULL) {
             pthread_mutex_lock(&mutex);
-            fprintf(stderr,"ap2 PCM received=%llu late=%llu silence=%llu realignments=%llu\n",
+            fprintf(stderr,"ap2 PCM received=%llu late=%llu silence=%llu realignments=%llu input_peak=%u output_peak=%u\n",
                 (unsigned long long)received,(unsigned long long)queue.late_frames,
-                (unsigned long long)queue.silence_frames,(unsigned long long)queue.realignments);
-            pthread_mutex_unlock(&mutex);report=now;
+                (unsigned long long)queue.silence_frames,(unsigned long long)queue.realignments,input_peak,output_peak);
+            input_peak=0;output_peak=0;pthread_mutex_unlock(&mutex);report=now;
         }
     }
     running=false;pthread_join(reader,NULL);
