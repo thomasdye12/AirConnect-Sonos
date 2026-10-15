@@ -1,6 +1,7 @@
 /* Live PCM ingress for the existing native Sonos session implementation. */
 #include "sonos_native.h"
 #include "cross_log.h"
+#include "jansson.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
@@ -19,6 +20,12 @@ static uint64_t millis(void) {
 }
 #define CAPACITY 35280 /* 200 ms, stereo s16le / 44100 Hz */
 #define PRIME 10584    /* 60 ms before starting or recovering an underrun */
+static void report_error(struct sonos_native_device *d,const char *fallback) {
+    char error[192];sonos_native_get_error(d,error,sizeof(error));
+    json_t *message=json_pack("{s:s,s:s}","type","error","message",*error?error:fallback);
+    char *text=json_dumps(message,JSON_COMPACT);
+    if(text){puts(text);free(text);}json_decref(message);
+}
 int main(int argc,char **argv) {
     if(argc!=7)return 2;
     int volume=atoi(argv[5]),muted=atoi(argv[6]);
@@ -32,7 +39,7 @@ int main(int argc,char **argv) {
     sonos_native_volume(d,volume);
     raop_pcm_output_t out=sonos_native_output(d);
     void *s=out.open(out.owner,&running);
-    if(!s){sonos_native_device_free(d);return 5;}
+    if(!s){report_error(d,"Speaker setup failed before UDP start");sonos_native_device_free(d);return 5;}
     fcntl(STDIN_FILENO,F_SETFL,fcntl(STDIN_FILENO,F_GETFL)|O_NONBLOCK);
     uint8_t queue[CAPACITY],input[16384],pcm[1004];size_t used=0;
     uint64_t started=millis(),report=started,received=0,dropped=0,silence=0,frames=0;
@@ -66,6 +73,7 @@ int main(int argc,char **argv) {
         }
         if(!ready && millis()-started>15000){rc=8;break;}
     }
+    if(rc)report_error(d,rc==8?"Speaker preparation timed out":"Native PCM sender stopped");
     out.close(s);sonos_native_device_free(d);
     printf("{\"type\":\"closed\",\"code\":%d,\"received_bytes\":%llu,\"dropped_frames\":%llu}\n",rc,(unsigned long long)received,(unsigned long long)dropped);
     return rc;

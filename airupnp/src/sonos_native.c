@@ -31,6 +31,7 @@ struct pair { const char *key, *value; };
 struct state { char *uri, *meta; char group[160]; int volume, mute; };
 struct sonos_native_device {
     char local[16], ip[16], id[32];
+    char error[192];
     pthread_mutex_t mutex;
     int volume, muted, active;
 };
@@ -232,10 +233,12 @@ static int standalone(IXML_Document *doc,const char *id,const char *ip,char *gro
 static void state_free(struct state *s) { free(s->uri);free(s->meta);memset(s,0,sizeof(*s)); }
 static int snapshot(const char *ip,const char *id,struct state *s) {
     char *transport=value(ip,AV,"GetTransportInfo","CurrentTransportState");
-    int ok=transport && !strcmp(transport,"STOPPED"); free(transport);
+    int ok=transport && !strcmp(transport,"STOPPED");
+    if(!ok)LOG_ERROR("native snapshot %s: transport=%s; expected STOPPED",ip,transport?transport:"unavailable");
+    free(transport);
     if (!ok) return -1;
     IXML_Document *top=topology(ip); ok=ok && standalone(top,id,ip,s->group); if(top)ixmlDocument_free(top);
-    if (!ok) return -1;
+    if (!ok) {LOG_ERROR("native snapshot %s: standalone identity not confirmed",ip);return -1;}
     s->uri=value(ip,AV,"GetMediaInfo","CurrentURI"); s->meta=value(ip,AV,"GetMediaInfo","CurrentURIMetaData");
     char *mute=value(ip,RC,"GetMute","CurrentMute"), *vol=value(ip,RC,"GetVolume","CurrentVolume");
     ok=s->uri && s->meta && mute && vol;
@@ -252,23 +255,40 @@ static int restore(const char *ip,const char *id,const struct state *s,int detac
     LOG_INFO("native restore %s: %s",ip,!rc&&verified?"verified":"FAILED");
     return !rc&&verified ? 0 : -1;
 }
-static int separated(struct session *s) {
+static int separated(struct session *s, int diagnose) {
     int ok=1;const char *ips[]={s->device->ip,helper_ip};
     for(int i=0;i<2;++i) {
         IXML_Document *top=topology(ips[i]);
-        ok=ok && standalone(top,s->device->id,s->device->ip,NULL) && standalone(top,helper_id,helper_ip,NULL);
+        int receiver=standalone(top,s->device->id,s->device->ip,NULL),helper=standalone(top,helper_id,helper_ip,NULL);
+        if(diagnose)LOG_INFO("native topology from %s: receiver_standalone=%d helper_standalone=%d",ips[i],receiver,helper);
+        /* Each coordinator's own membership is authoritative. Its cached view
+         * of the other group may retain an orphaned pre-promotion group ID. */
+        ok=ok && (i==0 ? receiver : helper);
         if(top)ixmlDocument_free(top);
     }
     return ok;
 }
 static int stopped(struct session *s) {pthread_mutex_lock(&s->mutex);int stop=s->stop;pthread_mutex_unlock(&s->mutex);return stop;}
+static int wait_separated(struct session *s) {
+    uint64_t deadline=millis()+3000;
+    do {if(separated(s,0))return 1;delay_ms(150);}while(!stopped(s)&&millis()<deadline);
+    return 0;
+}
+static void failure(struct sonos_native_device *d,const char *stage) {
+    pthread_mutex_lock(&d->mutex);
+    snprintf(d->error,sizeof(d->error),"Speaker setup failed: %s",stage);
+    pthread_mutex_unlock(&d->mutex);
+    LOG_ERROR("native failure %s: %s",d->ip,stage);
+}
 static void *control(void *arg) {
     struct session *s=arg;struct sonos_native_device *d=s->device;
     uint64_t first=0;int promoted=0,last_volume=-1;
+    const char *stage="setting receiver volume/mute";
     while(!stopped(s)) {
         pthread_mutex_lock(&d->mutex);int volume=d->volume;pthread_mutex_unlock(&d->mutex);
         if(volume<0)volume=s->receiver.volume;
         if(volume!=last_volume) {
+            stage="setting receiver volume/mute";
             if(render(d->ip,"SetVolume",volume) || render(d->ip,"SetMute",d->muted || volume==0)) goto fail;
             last_volume=volume;
         }
@@ -278,14 +298,26 @@ static void *control(void *arg) {
             char transport[256],uri[80];strcpy(transport,s->settings);char *comma=strrchr(transport,',');if(comma)comma[1]=0;
             snprintf(uri,sizeof(uri),"x-rincon-stream:RINCON_02%.10s01400:0",d->id+9);
             const struct pair args[]={{"InstanceID","0"},{"CurrentCoordinator",helper_id},{"CurrentGroupID",s->receiver.group},{"OtherMembers",""},{"TransportSettings",transport},{"CurrentURI",uri},{"CurrentURIMetaData",""},{"SleepTimerState",""},{"AlarmState",""},{"StreamRestartState",""},{"SharedQueueTrackList",""},{"PrivateQueueTrackList",""},{"CurrentVLIState",""},{NULL,NULL}};
+            stage="promoting receiver to coordinator";
             if(action(d->ip,AV,"BecomeGroupCoordinator",args))goto fail;
-            uint64_t deadline=millis()+3000;int clean;
-            do {clean=separated(s);if(clean)break;delay_ms(150);}while(!stopped(s)&&millis()<deadline);
+            int clean=wait_separated(s);
             if(stopped(s))return NULL;
             if(!clean) {
+                LOG_INFO("native topology still converging for %s; detaching helper",d->ip);
+                separated(s,1);
                 const struct pair remove[]={{"MemberID",d->id},{NULL,NULL}};
-                if(action(helper_ip,"GroupManagement","RemoveMember",remove) || basic(helper_ip,"BecomeCoordinatorOfStandaloneGroup") || !separated(s))goto fail;
+                stage="removing receiver from helper group";
+                if(action(helper_ip,"GroupManagement","RemoveMember",remove))goto fail;
+                stage="detaching helper";
+                if(basic(helper_ip,"BecomeCoordinatorOfStandaloneGroup"))goto fail;
+                /* Sonos acknowledges before every topology view has converged. */
+                stage="timed out waiting for receiver/helper separation";
+                clean=wait_separated(s);
+                if(stopped(s))return NULL;
+                if(!clean) {separated(s,1);goto fail;}
             }
+            if(stopped(s))return NULL;
+            stage="restoring helper after separation";
             if(restore(helper_ip,helper_id,&s->helper,0))goto fail;
             release(&s->helper_lock);
             pthread_mutex_lock(&s->mutex);s->helper_released=1;pthread_mutex_unlock(&s->mutex);promoted=1;
@@ -295,6 +327,7 @@ static void *control(void *arg) {
     }
     return NULL;
 fail:
+    failure(d,stage);
     pthread_mutex_lock(&s->mutex);s->failed=1;pthread_mutex_unlock(&s->mutex);
     LOG_ERROR("native control failed for %s; closing and restoring",d->ip);
     return NULL;
@@ -319,28 +352,37 @@ static void session_close(void *ctx) {
 }
 static void *session_open(void *owner, const volatile bool *running) {
     struct sonos_native_device *d=owner;
-    pthread_mutex_lock(&d->mutex);int active=d->active;d->active=1;pthread_mutex_unlock(&d->mutex);
+    pthread_mutex_lock(&d->mutex);int active=d->active;d->active=1;if(!active)d->error[0]=0;pthread_mutex_unlock(&d->mutex);
     if(active)return NULL;
     struct session *s=calloc(1,sizeof(*s));
     if(!s){pthread_mutex_lock(&d->mutex);d->active=0;pthread_mutex_unlock(&d->mutex);return NULL;}
     s->device=d;s->receiver_lock=s->helper_lock=-1;pthread_mutex_init(&s->mutex,NULL);
+    const char *stage="receiver lease unavailable";
     s->receiver_lock=lease(d->id,running);if(s->receiver_lock<0)goto fail;
+    stage="helper lease unavailable";
     s->helper_lock=lease(helper_id,running);if(s->helper_lock<0)goto fail;
-    if(!*running || snapshot(d->ip,d->id,&s->receiver)||snapshot(helper_ip,helper_id,&s->helper)) {
-        LOG_ERROR("native setup refused: receiver/helper must match identity and be stopped standalone");goto fail;
-    }
+    stage="receiver must be reachable, stopped and standalone; see bridge log";
+    if(!*running || snapshot(d->ip,d->id,&s->receiver))goto fail;
+    stage="helper must be reachable, stopped and standalone; see bridge log";
+    if(snapshot(helper_ip,helper_id,&s->helper))goto fail;
+    stage="opening UDP sender";
     s->sender=sonos_sender_open(d->local,d->ip,7020,0,75000);if(!s->sender)goto fail;
     if(!*running)goto fail;
     s->changed=1;
+    stage="muting receiver/helper for setup";
     if(render(d->ip,"SetMute",1)||render(helper_ip,"SetMute",1))goto fail;
     char uri[80];snprintf(uri,sizeof(uri),"x-rincon:%s",helper_id);
+    stage="joining receiver to helper";
     if(seturi(d->ip,uri,""))goto fail;
     snprintf(s->settings,sizeof(s->settings),"234.142.199.198:7020,%s:7000:7010:%u,%s",d->local,sonos_sender_clock_port(s->sender),helper_id);
     const struct pair args[]={{"InstanceID","0"},{"NewTransportSettings",s->settings},{"CurrentAVTransportURI",uri},{NULL,NULL}};
+    stage="configuring receiver transport";
     if(action(d->ip,AV,"ChangeTransportSettings",args))goto fail;
+    stage="starting receiver control";
     if(pthread_create(&s->control,NULL,control,s))goto fail;
     s->control_started=1;LOG_INFO("native PCM started for %s",d->ip);return s;
 fail:
+    failure(d,stage);
     session_close(s);return NULL;
 }
 static int session_write(void *ctx,const uint8_t *pcm,size_t bytes) {
@@ -370,4 +412,7 @@ int sonos_native_session_ready(void *ctx) {
     struct session *s=ctx;
     pthread_mutex_lock(&s->mutex);int ready=s->helper_released && !s->failed;pthread_mutex_unlock(&s->mutex);
     return ready;
+}
+void sonos_native_get_error(struct sonos_native_device *d,char *buffer,size_t size) {
+    pthread_mutex_lock(&d->mutex);snprintf(buffer,size,"%s",d->error);pthread_mutex_unlock(&d->mutex);
 }

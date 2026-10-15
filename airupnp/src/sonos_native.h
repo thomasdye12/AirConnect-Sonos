@@ -11,3 +11,5 @@ raop_pcm_output_t sonos_native_output(struct sonos_native_device *d);
 void sonos_native_volume(struct sonos_native_device *d, int volume);
 /* True after independent receiver promotion and helper restoration. */
 int sonos_native_session_ready(void *session);
+/* Last setup/control failure, copied under the device lock. */
+void sonos_native_get_error(struct sonos_native_device *d, char *buffer, size_t size);

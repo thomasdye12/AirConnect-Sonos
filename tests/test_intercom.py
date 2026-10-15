@@ -118,6 +118,21 @@ while True:
                 while manager.sessions and time.time() < deadline: time.sleep(.02)
                 self.assertFalse(manager.sessions)
                 self.assertEqual(manager.recent[0]['state'], 'closed')
+                # The specific native failure must reach both client and status;
+                # a promotion timeout is not a stopped/standalone admission error.
+                reason = 'Speaker setup failed: timed out waiting for receiver/helper separation'
+                with open(worker, 'w') as stream:
+                    stream.write('#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(' + repr({'type': 'error', 'message': reason}) + ')); sys.stdout.flush()\nsys.exit(7)\n')
+                sock, header = connect(config['token'])
+                sock.sendall(masked(1, json.dumps(START).encode()))
+                self.assertEqual(incoming(sock)[1]['type'], 'preparing')
+                self.assertEqual(incoming(sock)[1], {'type': 'error', 'message': reason})
+                sock.close()
+                deadline = time.time() + 3
+                while manager.sessions and time.time() < deadline: time.sleep(.02)
+                self.assertFalse(manager.sessions)
+                self.assertEqual(manager.recent[-1]['error'], reason)
+                self.assertEqual(manager.recent[-1]['exit_code'], 7)
             finally:
                 server.shutdown(); server.server_close(); thread.join()
 

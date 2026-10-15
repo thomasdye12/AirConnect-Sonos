@@ -129,6 +129,8 @@ class Session:
                         self.ready.set()
                     elif message['type'] in ('stats', 'closed'):
                         self.status.update({k: v for k, v in message.items() if k != 'type'})
+                    elif message['type'] == 'error':
+                        self.status['error'] = str(message.get('message', 'Native sender failed'))[:512]
                 self.manager.publish()
         except (OSError, ValueError, KeyError):
             pass
@@ -324,13 +326,14 @@ class Handler(BaseHTTPRequestHandler):
                     elif opcode != 10:
                         raise ValueError('Wait for ready before sending PCM')
             if session.process.poll() is not None or session.snapshot()['state'] != 'ready':
-                raise RuntimeError('Speaker setup failed: receiver/helper must be stopped and standalone; check bridge events')
+                state = session.snapshot()
+                raise RuntimeError(state.get('error') or 'Speaker setup failed (worker exit {}); check intercom log'.format(state.get('exit_code')))
             send_json(self.connection, {'type': 'ready', 'room': session.room['name'], 'rate': 44100, 'channels': 2, 'format': 's16le'})
             started = last_input = time.monotonic()
             budget, budget_at = RATE_BYTES, started
             while time.monotonic() - started < 600:
                 if session.process.poll() is not None:
-                    raise RuntimeError('Native sender stopped')
+                    raise RuntimeError(session.snapshot().get('error') or 'Native sender stopped')
                 if time.monotonic() - last_input > 15:
                     raise RuntimeError('Input heartbeat timed out')
                 if not select.select([self.connection], [], [], .5)[0]:

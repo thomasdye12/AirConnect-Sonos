@@ -8,6 +8,7 @@ import socket
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import xml.etree.ElementTree as E
 
@@ -21,9 +22,16 @@ class NativeControl(unittest.TestCase):
         state = {ip: dict(uri='', meta='<DIDL-Lite><title>A &amp; B</title></DIDL-Lite>', volume='19', mute='0', transport='STOPPED') for ip in (A, B)}
         original = {ip: dict(v) for ip, v in state.items()}
         joined, calls, fail_promotion = [False], [], [False]
-        def topology():
+        delayed_detach, never_converge, detached_at = [False], [False], [None]
+        def topology(view):
+            if detached_at[0] is not None and not never_converge[0] and time.monotonic() >= detached_at[0]:
+                joined[0] = False
             root = E.Element('ZoneGroups')
             groups = [(UB, [A, B])] if joined[0] else [(UA, [A]), (UB, [B])]
+            if view == B and delayed_detach[0] and not joined[0]:
+                # Captured Sonos behavior: helper is independently coordinated,
+                # but caches the receiver in an orphaned old group indefinitely.
+                groups = [('', [A]), (UB, [B])]
             for coord, members in groups:
                 group = E.SubElement(root, 'ZoneGroup', Coordinator=coord, ID=coord + ':1')
                 for ip in members:
@@ -42,7 +50,7 @@ class NativeControl(unittest.TestCase):
                 if name == 'BecomeGroupCoordinator' and fail_promotion[0]:
                     self.send_response(500); self.send_header('Content-Length', '0'); self.end_headers(); return
                 result = {}
-                if name == 'GetZoneGroupState': result['ZoneGroupState'] = topology()
+                if name == 'GetZoneGroupState': result['ZoneGroupState'] = topology(ip)
                 elif name == 'GetTransportInfo': result['CurrentTransportState'] = state[ip]['transport']
                 elif name == 'GetMediaInfo': result.update(CurrentURI=state[ip]['uri'], CurrentURIMetaData=state[ip]['meta'])
                 elif name == 'GetMute': result['CurrentMute'] = state[ip]['mute']
@@ -53,11 +61,16 @@ class NativeControl(unittest.TestCase):
                     state[ip]['uri'], state[ip]['meta'] = args['CurrentURI'], args['CurrentURIMetaData']
                     if ip == A and args['CurrentURI'].startswith('x-rincon:'): joined[0] = True
                 elif name in ('BecomeGroupCoordinator', 'BecomeCoordinatorOfStandaloneGroup'):
-                    joined[0] = False
+                    if delayed_detach[0] and name == 'BecomeGroupCoordinator':
+                        pass  # Acknowledged, but topology still shows old membership.
+                    elif delayed_detach[0] and ip == B and joined[0]:
+                        detached_at[0] = time.monotonic() + .6
+                    else:
+                        joined[0] = False
                     if name == 'BecomeGroupCoordinator':
                         assert self.headers.get('x-sonos-clone-gc') == '1'
                 elif name == 'Stop': state[ip]['transport'] = 'STOPPED'
-                elif name != 'ChangeTransportSettings': raise AssertionError(name)
+                elif name not in ('ChangeTransportSettings', 'RemoveMember'): raise AssertionError(name)
                 response = E.Element('Response')
                 for key, value in result.items(): E.SubElement(response, key).text = value
                 raw = E.tostring(response)
@@ -87,6 +100,24 @@ class NativeControl(unittest.TestCase):
                 # The final receiver restore must not query or mutate the helper.
                 close_start = max(i for i, (ip, action) in enumerate(calls) if ip == A and action == 'BecomeCoordinatorOfStandaloneGroup')
                 self.assertFalse(any(ip == B for ip, action in calls[close_start:]))
+                # Regression: detach ACK precedes topology convergence. Continue
+                # sending PCM while waiting, then release/restore the helper.
+                calls.clear(); delayed_detach[0] = True
+                longer = list(command); longer[-2] = '11'
+                run = subprocess.run(longer, capture_output=True, text=True, timeout=25)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertIn((B, 'RemoveMember'), calls)
+                self.assertIn('native helper released', run.stderr)
+                self.assertEqual(run.stderr.count(': verified'), 2)
+                self.assertEqual(state, original)
+                # A topology which never converges must still fail and restore.
+                calls.clear(); detached_at[0] = None; never_converge[0] = True
+                run = subprocess.run(longer, capture_output=True, text=True, timeout=25)
+                self.assertEqual(run.returncode, 6, run.stderr)
+                self.assertIn('timed out waiting for receiver/helper separation', run.stderr)
+                self.assertEqual(run.stderr.count(': verified'), 2)
+                self.assertEqual(state, original)
+                delayed_detach[0] = never_converge[0] = False; detached_at[0] = None
                 calls.clear(); fail_promotion[0] = True
                 run = subprocess.run(command, capture_output=True, text=True, timeout=20)
                 self.assertEqual(run.returncode, 6, run.stderr)

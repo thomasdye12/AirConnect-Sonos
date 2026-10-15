@@ -43,6 +43,8 @@ sudo systemctl enable --now airconnect-intercom.service
 
 The supplied unit runs as root to share the existing bridge's root-owned device leases. It creates the runtime status directory and permits graceful worker restoration on shutdown. The intercom log is `/var/log/airconnect-intercom.log`; include it in the host's log rotation policy.
 
+Sonos can acknowledge a group change before its topology updates. Setup polls after promotion and again after the recovery detach (up to three seconds per polling phase). Each speaker must report its own group as standalone, with its expected coordinator identity, address and single member. The helper's cached view of the receiver can retain an orphaned old group and is not authoritative for receiver membership. Microphone audio is accepted only after both local membership checks and helper restoration succeed. A speaker that remains grouped still causes bounded failure and restoration. Native failures identify the setup stage in the log, WebSocket error and dashboard session status; snapshot logs distinguish an active transport from a missing standalone identity.
+
 ## Protect adapter
 
 Copy `airconnect-intercom.js` beside the existing `protect-talkback.js`; it uses that project's installed `ws` dependency and FFmpeg executable. The accompanying `protect-talkback.patch` records the integration against the inspected service. Inspect and apply with `git apply --unidiff-zero --check` first, because other versions of the project may differ. No full copy of the private Protect project is included.
@@ -66,8 +68,10 @@ With native mode enabled, Sonos audio bypasses the HTTP `urlradio` session, its 
 ## Verification
 
 - `python3 -m unittest discover -s tests -p test_intercom.py`: masked PCM/control framing, malformed/unmasked/oversized rejection, authentication, Origin rejection, format/volume/room validation, duplicate admission and disconnect cleanup using a fake worker.
+- `python3 tests/test_native_control.py` after building the native driver: successful restoration, delayed topology after detach, bounded failure when topology never converges, rejected promotion and busy-helper admission. On macOS set `NATIVE_TEST_HELPER_IP` to a local interface address for the second simulated speaker.
 - `node --test airconnect-intercom.test.js` on the Protect host: real AAC decoding to PCM before end-of-input, readiness gating, credential header, refusal and decoder/socket cleanup against a mock bridge.
 - `node --test airconnect-protect-integration.test.js`: camera forwarding remains active; ready is delayed until native setup; no HTTP Sonos session is created. Run beside the patched Protect module.
 - Muted live test: 15-second AAC source decoded and sent 2,650,112 PCM bytes; native sender reported 3,423 UDP packets, 40 clock requests, 662,178 signal frames and zero worker queue drops. Nine packets were more than 6 ms late. Helper and receiver restoration were logged as verified, and worker exit was zero. No acoustic quality or end-to-end microphone latency claim is made from this muted test.
+- Front Door recovery regression: reproduced a helper retaining the receiver in an orphaned old group after promotion. After checking each coordinator's own membership and waiting after detach, a muted 15-second AAC stream reached ready in 7.6 seconds, sent 2,650,112 PCM bytes with zero queue drops, and restored both speakers. This validates setup and transport; an audible microphone test remains necessary.
 
 AAC ingress is expected to be ADTS, matching the existing live AAC stream path. Other client codecs/containers need an explicit decoder change. Actual iPhone microphone playback, audible quality, longer endurance and concurrent audible intercom/AirPlay still require user validation.
