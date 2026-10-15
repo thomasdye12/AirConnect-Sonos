@@ -1,5 +1,28 @@
 # Fork changes
 
+## Current source — 2026-10-15 (after tds4; no new binary release)
+
+- Added the separate authenticated PCM WebSocket intercom service and native C worker, explicit room/IP admission, bounded queues, shared native leases, status and graceful restoration.
+- Added the Protect AAC/FFmpeg adapter and integration patch, preserving camera talkback and waiting for speaker readiness. Connection diagnostics distinguish client, camera, decoder and bridge failures; cancellation during camera lookup no longer starts a native session afterwards.
+- Added the separate read-only LAN dashboard, service/room/ownership views, recent intercom sessions and diagnostics, with an installer and component rollback.
+- Fixed helper-release checks to use each speaker's own topology and wait for detach propagation, avoiding false failure from an orphaned cached group.
+- Added intercom-only recovery for bounded scheduling stalls, stale PCM discard, a 750 ms pipe-backpressure bound and preservation of the underlying native error. Strict AirPlay pacing remains unchanged.
+- Verified muted 90-second recovery under an intentional 351 ms worker pause. A later real microphone session completed about 69 seconds of PCM cleanly, but its client close intent and full audible result were not confirmed. See [validation](docs/VALIDATION.md).
+- Reorganized documentation into fresh install/upgrade, architecture, operations and validation guides; preserved the previous README in [history](README.history.md). No new runtime deployment or binary release is implied by the documentation update.
+
+## v1.12.4-tds4 — 2026-10-14
+
+- Corrected native PCM continuity: advance a submitted-sample cursor rather than using packetized write return timing, avoiding repeated silent-block insertion and small hidden drops.
+- Added deterministic continuity checks and counters for waiting, dropped frames and realignment. Long-term resampling/drift correction remains unfinished.
+- Published ARM AirPlay binaries and the controller; these assets predate the separate dashboard/intercom work.
+
+## v1.12.4-tds3 — 2026-10-14
+
+- Integrated the native sender with AirPlay PCM, temporary helper-assisted setup, receiver promotion, helper release, shared ownership and verified restoration.
+- Added configurable helper selection, native mode and per-room synchronization offset. FLUSH keeps the session alive with silence; disconnect/teardown closes the sink.
+- Confirmed short Kitchen/Bathroom native listening tests and at least 30 seconds of iPhone AirPlay playback. Real helper setup remains necessary; native metadata/artwork and virtual enrollment remain unfinished.
+
+
 ## Research follow-up — 2026-10-14
 
 Added bounded WAV music input to controller UDP tests. Inputs are validated before device access, preserve stereo PCM, and fade at both ends; audible output remains explicit. Bathroom's initial 25-second listening result was uncertain. A 30-second repeat with early helper release and an ending tone was user-confirmed clear through the end marker: 5,270 packets, 60 clock requests, zero late sends, both speakers restored. Initial helper setup remains necessary. See `bathroom-music-test.json`.

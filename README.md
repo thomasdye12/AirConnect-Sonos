@@ -1,162 +1,85 @@
 # AirConnect-Sonos
 
-A modified fork of **[Philippe's AirConnect](https://github.com/philippe44/AirConnect)**, maintained by [Thomas Dye](https://github.com/thomasdye12), with native Sonos HTTP API room naming, metadata improvements, and optional helper-assisted native UDP AirPlay output.
+AirPlay to Sonos, with room naming built into the bridge, optional native UDP audio, a local status dashboard, and a microphone/intercom input.
 
-**This is a copy of and derivative work based on AirConnect, not an independently created AirPlay implementation.** The original bridge, discovery, codecs, and protocol work belong to their respective upstream authors. This fork is not an official AirConnect, Sonos, or Apple release.
+This is a **modified fork of [Philippe's AirConnect](https://github.com/philippe44/AirConnect)**, maintained by [Thomas Dye](https://github.com/thomasdye12). The original AirPlay bridge, discovery and codec work come from AirConnect and its dependencies. This is not an independently created AirPlay stack or an official Sonos/Apple product. See [attribution](NOTICE.md), [LICENSE](LICENSE), and the preserved [upstream documentation](README.upstream.md).
 
-Based on AirConnect v1.12.4 at [`5fdb61e`](https://github.com/philippe44/AirConnect/commit/5fdb61e20de59bac5dbda9f6e2ed56ce549ccabd). The original documentation is preserved in [README.upstream.md](README.upstream.md). See [NOTICE.md](NOTICE.md) and the original [LICENSE](LICENSE) for attribution and dependency licensing.
+## Start here
 
-## What this fork changes
+| You want to… | Read this |
+| --- | --- |
+| Install the bridge from scratch or upgrade it | [Installation](docs/INSTALL.md) |
+| Understand the audio path and why a helper is needed | [How it works](docs/ARCHITECTURE.md) |
+| Send microphone audio from Protect or another application | [Intercom installation and protocol](integrations/unifi-protect/README.md) |
+| Run it, change rooms, read logs or recover from a failure | [Operation and troubleshooting](docs/OPERATIONS.md) |
+| See what has actually been tested | [Validation and known limitations](docs/VALIDATION.md) |
+| Build or work on the code | [Build details](CUSTOM.md), [source map](docs/ARCHITECTURE.md#source-map) |
+| Explore the earlier protocol experiments | [Research guide](research/sonos-native/README.md), [historical notes](README.history.md) |
 
-- **Native room naming from a Sonos HTTP API:** reads `/zones` directly, publishes group coordinators, and applies configurable name prefixes/suffixes such as `Kitchen (Sonos)`. No PHP configuration-generation script is required.
-- **Validated startup room list and optional cache:** rejects invalid, duplicate, empty, or oversized API responses. A configured cache can recover from an API outage using the last validated coordinator list for up to 24 hours. With the supplied systemd unit, failed starts retry after 30 seconds.
-- **Sender fallback:** uses the name in the AirPlay request when available, otherwise the sender IP. Discovery-based friendly iPhone names are **not implemented yet**.
-- **Metadata handling:** bounded ICY fields, safe handling of missing fields, retained metadata across HTTP reconnects, and safe text insertion in initial UPnP metadata.
-- **Experimental artwork reception:** accepts JPEG/PNG sent by the AirPlay source and serves the current image for the session instead of expiring it after two minutes. Image updates get distinct URLs.
-- **Direct systemd startup:** uses `-Z` for non-interactive operation, avoiding the original local shell/PHP launcher and its observed excessive CPU usage. Logging is capped at 5 MB.
+**Use the `sonos-improvements` branch for the current implementation.** The published [v1.12.4-tds4 prerelease](https://github.com/thomasdye12/AirConnect-Sonos/releases/tag/v1.12.4-tds4) contains the older AirPlay binary and controller. It does **not** contain the subsequent dashboard/intercom additions and October 15 recovery fixes. Build current source to get those changes; this documentation update does not publish a new binary release.
 
-## Local web dashboard
+## What it does
 
-Native microphone ingress is also available through the [Protect intercom integration](integrations/unifi-protect/README.md). It adds an authenticated PCM WebSocket on a separate port, reuses native Sonos setup/timing/restoration, and displays intercom sessions in the dashboard. It does not require an AirPlay connection.
+- Advertises Sonos rooms as AirPlay destinations, for example `Kitchen (Sonos)`.
+- Reads names and coordinator identities directly from a compatible Sonos HTTP API's `/zones` endpoint. The former external room-naming script is unnecessary. A validated cache can cover an API outage for up to 24 hours.
+- Offers the original UPnP/HTTP audio path and an opt-in native Sonos UDP path.
+- Reuses one configurable Sonos helper to prepare different receivers, then releases it while each stream continues independently.
+- Provides a read-only HTTP dashboard with service health, room state, native ownership, recent sessions and diagnostics.
+- Accepts authenticated live PCM over WebSocket for intercom use. The included Protect adapter decodes microphone AAC with FFmpeg and retains camera talkback forwarding.
+- Adds bounded queues, cleanup/restoration, connection diagnostics and short scheduling-stall recovery for intercom.
 
-The optional [read-only dashboard](tools/airconnect_dashboard.py) runs independently of audio playback, using Python 3.4+ and its standard library. It shows service health, room names and saved output settings, per-room sync offsets, native session ownership, Sonos-reported volume/track state, recent completed-session counters and a filtered event log. The responsive page includes an explanation of the audio path and a JSON diagnostics download.
-
-On the bridge, from this checkout:
-
-```sh
-sudo sh deploy/install-dashboard.sh BRIDGE_LAN_IPV4 8088
+```mermaid
+flowchart LR
+    I[iPhone AirPlay] --> A[AirConnect: decode audio]
+    M[Microphone / Protect] --> F[FFmpeg: AAC to PCM]
+    F --> W[Authenticated WebSocket input]
+    W --> N[Native Sonos sender]
+    A --> N
+    A --> H[Original HTTP stream]
+    H --> S[Sonos receiver]
+    N -->|UDP PCM + clock replies| S
+    C[Real Sonos helper] -. temporary group setup .-> S
+    D[Read-only dashboard] -. observes .-> N
 ```
 
-Open `http://BRIDGE_LAN_IPV4:8088`. The installer backs up an existing dashboard, enables `airconnect-dashboard.service`, and prints its rollback script. It does **not** restart the audio service. The bind address and port are in `/etc/default/airconnect-dashboard`; restart only the dashboard after changing them. To stop it: `sudo systemctl disable --now airconnect-dashboard.service`.
+## Requirements and scope
 
-This is an unauthenticated, read-only LAN monitor. Bind it to the bridge's LAN address; do not publish it on the internet. It has no playback, configuration-write or shell endpoints, does not serve arbitrary files, and rejects unconfigured HTTP Host names. Diagnostics contain local room names, addresses and recent logs; review before sharing publicly. For manual use, `python3 tools/airconnect_dashboard.py --bind BRIDGE_LAN_IPV4 --port 8088` uses the existing production config and log paths; `--config`, `--log` and `--allow-host` can override these.
+The documented deployment is a first-generation UniFi CloudKey running ARMv7 hard-float Linux with systemd. Builds were also tested on Apple Silicon macOS. The supplied installation paths and service units are Linux-specific. Other architectures need matching compiler settings and dependency archives; an ARMv7 binary is not a universal Raspberry Pi, ARM64, x86 or Docker image.
 
-Service and native lock ownership refresh every five seconds; room API data refreshes every fifteen seconds. Native ownership comes from the running process's actual `flock` leases, not stale lock files or a past start message. A held lease includes setup, paused sessions and restoration; it is not proof of audible sound. Sonos may report paused while native UDP audio plays. Packet counters and PCM continuity counters are **final session summaries**, not live meters; the current log cannot reliably associate PCM summaries with a room. The log reader is bounded to its last 2 MiB, and the UI explicitly marks stale API/collector data. Saved configuration may differ from the running process until the bridge restarts.
+Native UDP needs **a real Sonos helper and a separate receiver**, both stopped and in standalone groups at session start. No line-in cable or Connect-specific line-in action is needed. The helper is used for setup, not as the ongoing audio relay. This does not enroll a virtual speaker into the Sonos household.
 
-Run dashboard regressions with `python3 -m unittest discover -s tests -p 'test_dashboard.py'` (opens a temporary localhost HTTP listener).
+Separate phones can select different advertised rooms. This is **not AirPlay 2 synchronized multi-destination playback**. Initial helper setup is serialized; ongoing receiver sessions are separate. Intercom admits at most four sessions and refuses an already-owned receiver. Audible concurrent-session endurance remains unverified.
 
-## Native UDP AirPlay (tds4)
-
-**tds4 fixes an audio-continuity regression in tds3.** The original per-block timing gate could insert silence and skip queued audio even with no packet loss, because the paced UDP writer returns before the next PCM sample's deadline. Native output now advances a sample-counted cursor and tolerates small clock corrections without modifying the stream. A [deterministic regression and muted live test](research/sonos-native/firmware-research/native-pcm-continuity.json) reproduce the old corruption and verify the corrected output. Use tds4 for native playback.
-
-The bridge can now send decoded AirPlay PCM directly to Sonos over UDP. A user-selected, stopped Sonos helper briefly establishes each receiver, then is restored and released while audio continues. Concurrent receivers serialize helper setup and keep independent audio/timing sessions. This is experimental and opt-in; HTTP output remains available.
-
-On the bridge host after installing a tds4 build:
+## Basic source workflow
 
 ```sh
-python3 /var/airplay_sonos/airconnectctl.py helper-set --address HELPER_IP
-python3 /var/airplay_sonos/airconnectctl.py native-mode --enabled 1
-python3 /var/airplay_sonos/airconnectctl.py restart
-```
-
-`helper-set` saves the helper's verified IP, UUID and room name in `native-helper.json`. The helper is reserved from AirPlay advertisement when common native mode is enabled. It must be stopped and standalone when another receiver starts. Update the helper address and restart after an IP change. The JSON path can be set with `--helper-config` and the XML `sonos_native_helper` element.
-
-The receiver must also be stopped and standalone. Native mode does not break up an existing speaker group or take over unrelated playback. Leave grouped rooms on HTTP with `<native_udp>0</native_udp>` in their `<device>` configuration. Common settings set the default; device overrides take precedence. `native-mode --enabled 0` returns the default to HTTP after a restart. The installer does not silently opt into native mode.
-
-Each AirPlay source selects its own advertised room. This supports separate streams to different receivers; it does not add AirPlay 2 synchronized multi-destination playback. FLUSH clears queued AirPlay frames while the native connection sends silence; audio resumes on new frames. TEARDOWN, a closed AirPlay TCP connection, service shutdown and sender errors close the session and attempt verified state restoration. Helper setup waits at most 15 seconds for each device lease; SOAP calls have bounded network waits. A failed native session logs an error and requires reconnecting; it does not silently fall back or claim audible playback.
-
-[ARM integration evidence](research/sonos-native/firmware-research/airplay-native-integration.json) records two overlapping muted AirPlay streams, pause/resume, helper reuse, nonzero decoded PCM, abrupt TCP disconnect and independent restoration. Earlier short direct UDP tone/music tests were listener-confirmed. After installation, the user confirmed clear iPhone AirPlay playback in Kitchen for at least 30 seconds. That initial build played audio ahead of a YouTube sync test; after the timestamp correction below, the user reported audio approximately 500 ms early and about two seconds of sound after pause. A local 500 ms calibration was then applied for a repeat sync check. The pause tail remains unresolved. Measured acoustic latency, audible concurrent iPhone streams and long endurance remain unverified. Sonos still reports paused during native rendering; native mode suppresses the old transport-poll feedback that would pause the AirPlay source. Native title/artwork updates are not implemented. Small timing corrections up to 20 ms preserve continuous PCM; larger discrepancies trigger a logged realignment. This is partial synchronization without sample-rate resampling, so long-term clock drift still needs endurance validation.
-
-For silent validation use `native-mode --enabled 1 --muted` and restart. Remove `--muted` when enabling normal playback. The original `1000:2000` profile belongs to HTTP output; the integrated tests used `500:0`. Native output follows the source RTP/NTP presentation schedule, including the receiver delay advertised in RECORD. It schedules PCM with a 75 ms UDP sender lead using a cursor advanced by every submitted sample, preserves future frames through helper setup, and discards expired complete frames during initial alignment or a discontinuity, rather than rechecking wall-clock eligibility for every block. This replaces the initial 32-packet startup trim. It is not a measured end-to-end delay or proof of video lip-sync. The native sender stops on a producer stall exceeding 250 ms rather than bursting stale audio.
-
-Local A/V calibration is available as `native-mode --enabled 1 --sync-offset-ms 500`, followed by a restart. The range is -1000..5000 ms; positive values delay audio, zero is the default, and omitting the option preserves the saved value. This offset changes local presentation only, not the latency advertised to the source. To calibrate one receiver, put `<native_sync_offset_ms>500</native_sync_offset_ms>` in its `<device>` entry. A source that does not send an immediate FLUSH can leave queued audio playing after pause; calibration does not solve that pause tail.
-
-## Important limitations
-
-**Changing artwork in the Sonos app does not work in this version.** Receiving/hosting an image is not proof that Sonos displays it. The current MP3/AAC ICY path sends artwork as `StreamURL`; Sonos documents that its ICY parser reads only `StreamTitle`. Its documented dynamic-artwork route is HLS/ID3 metadata, which this fork does not implement. See [Sonos's audio-format documentation](https://docs.sonos.com/docs/supported-audio-formats).
-
-Basic audio playback and API room naming were verified on a first-generation UniFi CloudKey. Automated tests verify metadata handling, but end-to-end Sonos title/artist updates are not fully validated. The room list is a **startup snapshot**: restart after API room/group changes. The optional cache may be stale after a group change; restart with a working API to refresh it. An empty `sonos_cache` disables fallback.
-
-No reduction in audible latency is claimed. Sonos buffering remains relevant; this is not a video lip-sync solution. The configuration example uses the upstream-recommended `1000:2000` Sonos buffer profile. Lower settings need listening tests on your network.
-
-## Download
-
-See [Releases](https://github.com/thomasdye12/AirConnect-Sonos/releases) for the experimental ARM hard-float CloudKey build. Prefer `airupnp-linux-arm`; the static variant is a fallback. Verify downloads against `SHA256SUMS`.
-
-The inherited `AirConnect-*.zip` file in this repository is an **unmodified upstream distribution**, not a binary of this fork.
-
-## Build from Git
-
-```sh
-git clone https://github.com/thomasdye12/AirConnect-Sonos.git
+git clone --branch sonos-improvements https://github.com/thomasdye12/AirConnect-Sonos.git
 cd AirConnect-Sonos
 sh prepare-source.sh
-```
-
-`prepare-source.sh` fetches the pinned top-level dependencies and applies [patches/libraop-tds.patch](patches/libraop-tds.patch). It is safe to run again, upgrades the prior tds2/tds3 patches, and refuses to overwrite conflicting source changes. The modified RAOP code is distributed as a patch rather than pointing a submodule at an unpublished commit. Do not skip this step.
-
-On Apple Silicon macOS with the Xcode command-line tools:
-
-```sh
-sh build-custom.sh
-sh tests/run.sh
-sh tests/run-rtsp.sh
-sh tests/build-native-driver.sh
-sh tests/run-pcm.sh
-python3 -m unittest discover -s tests -p 'test_*.py'
-```
-
-The C control simulation needs two local IPv4 addresses. On macOS, set `NATIVE_TEST_HELPER_IP` to this Mac’s LAN address when running `test_native_control.py`; without it that one simulation is skipped. The simulated listeners never control real speakers.
-
-On a compatible ARM hard-float Linux system with GCC, make, and binutils:
-
-```sh
+# On the tested ARMv7 hard-float Linux target:
 sh build-cloudkey.sh
+sh build-intercom.sh
 ```
 
-The CloudKey script recompiles the changed C server/streamer objects and updates a copy of the pinned upstream RAOP archive. It avoids unrelated C++17 client code, allowing GCC 4.9 builds. Other dependencies use upstream prebuilt archives: this is **not** a full source rebuild of every third-party library. See [CUSTOM.md](CUSTOM.md) for details.
+Do not skip `prepare-source.sh`: it initializes pinned dependencies and applies the custom RAOP patch. A dirty `common/libraop` submodule afterwards is expected. Do not reset it or publish a replacement submodule pointer. Follow the [complete installation guide](docs/INSTALL.md) to configure and install the services; the build commands alone do not install anything.
 
-## Configure
+## What is still experimental
 
-Copy [deploy/airupnp.xml](deploy/airupnp.xml) and replace the example API URL with your own endpoint. It expects the `/zones` schema provided by [node-sonos-http-api](https://github.com/jishi/node-sonos-http-api): an array of groups containing `coordinator.uuid` and `coordinator.roomName`.
+| Area | Current position |
+| --- | --- |
+| Native audio | Short listening tests and live microphone sessions worked. Recovery has automated and muted live evidence; uninterrupted sound through recovery still needs listening confirmation. |
+| Startup | Native setup commonly took about 5–8 seconds in this deployment. Wait for readiness before talking. This is separate from steady-state audio latency. |
+| Latency and synchronization | Source timestamps and a per-room offset are supported. No measured mouth-to-speaker or acoustic lip-sync guarantee; no long-term resampling-based drift correction. |
+| Pause | FLUSH clears pending AirPlay audio and keeps the session alive with silence. Sources that delay FLUSH can still leave a pause tail. |
+| Track information and artwork | HTTP metadata handling was improved, but end-to-end display is incompletely validated. Images can be received/hosted; dynamic Sonos artwork is not working. Native title/artwork updates are not implemented. |
+| Phone names | Uses a name supplied in the AirPlay request when available; otherwise an IP address. Discovery-based friendly device naming is not implemented. |
+| Taking over playback | Native startup refuses playing/paused or grouped devices; it does not automatically interrupt music or dismantle existing groups. |
+| Virtual Connect / pairing | Research remains incomplete. The operational native path still requires the real helper. |
 
-```xml
-<sonos_api>http://sonos-api.local:5005/zones</sonos_api>
-<sonos_cache>/var/airplay_sonos/rooms-cache.json</sonos_cache>
-<sonos_name_prefix></sonos_name_prefix>
-<sonos_name_suffix> (Sonos)</sonos_name_suffix>
-```
+See [validation](docs/VALIDATION.md) for the difference between listener confirmation, transmitted audio, and transport-only checks. A successful SOAP reply, a running worker or rising packet counter is not proof of audible playback.
 
-When `sonos_api` is configured, its coordinator list controls which renderers are enabled and their names. Only plain local HTTP is currently supported. Without `sonos_api`, normal upstream discovery/configuration applies.
+## Sharing and attribution
 
-The supplied [systemd unit](deploy/airplay_sonos.service) expects the binary and configuration at `/var/airplay_sonos/airupnp-linux-arm` and `/var/airplay_sonos/Config.xml`. Adapt these paths for your host. Preserve the existing binary, configuration, and unit before replacing a working installation. The unit starts the binary directly; an old PHP/shell launcher is not needed.
+The fork is based on AirConnect v1.12.4 at [`5fdb61e`](https://github.com/philippe44/AirConnect/commit/5fdb61e20de59bac5dbda9f6e2ed56ce549ccabd). Keep upstream credit and dependency licenses when redistributing it. Firmware, private captures, recorded audio, credentials and household configurations are not part of this repository.
 
-## Validation and contribution
-
-The experimental build was compiled and smoke-tested on macOS ARM64 and a Debian 8 ARM hard-float CloudKey. API validation was tested against a live Sonos HTTP API; a discovery run found 19 coordinators; basic audio playback was user-confirmed. Local sanitizer tests cover malformed API responses, metadata formatting, and RTSP artwork messages. Live artwork display failed and is explicitly recorded above.
-
-Please report fork-specific problems in [this repository's issues](https://github.com/thomasdye12/AirConnect-Sonos/issues). Keep upstream credit and license notices when sharing modifications.
-
-## Earlier controller and transport research (tds2)
-
-The following records describe earlier stages. The tds3 integration above supersedes statements below about the absence of an AirPlay UDP backend.
-
-At the tds2 stage, the production bridge used the established UPnP HTTP playback path. Independent AirPlay sessions can target separate advertised coordinators; grouped speakers share their coordinator. At that stage, the native UDP sender and audio-clip experiments were not wired into AirPlay playback.
-
-The companion controller uses Python 3.4+ for local management:
-
-```sh
-python3 tools/airconnectctl.py status
-python3 tools/airconnectctl.py rooms
-sudo python3 tools/airconnectctl.py restart
-# From another host, read the API without changing playback:
-python3 tools/airconnectctl.py --api http://sonos-api.local:5005/zones rooms
-```
-
-`status` and `restart` operate on the local Linux systemd service. `rooms` reports the live API list, or a validated cache during an outage; it is not a check of AirPlay advertisements or audible playback. On the CloudKey, `sudo sh deploy/install-cloudkey.sh` installs the built bridge and controller at `/var/airplay_sonos/airconnectctl.py`, enables the room cache, preserves the other XML settings, and restarts the service. It creates a timestamped backup and rollback script under `/srv/airconnect-backups/` and rolls back if installation or the immediate service check fails. Verify discovery after startup; this check cannot detect later failures.
-
-[Research guide](research/sonos-native/README.md): portable C UDP sender, packet decoder, concurrent-session tests, local WebSocket client, bounded audio-clip tests, virtual-player experiment and sanitized findings. No real Connect is required for the clip tests. They require a stopped standalone speaker, default to silence, and restore/verify its state. Run them from the full checkout on Python 3.8+ (for example, your Mac):
-
-```sh
-python3 tools/airconnectctl.py clip-test --receiver SPEAKER_IP --receiver-id SPEAKER_UUID --seconds 12 --streaming --output work/clip-test.json
-```
-
-This command never opts into audible playback. It does temporarily change mute and run a clip. Research logs contain local device information and should remain private. Audio-clip sound quality, long-duration reliability and acoustic latency are unverified. Earlier [UDP research](research/sonos-native/firmware-research/coordinator-role-followup.txt) ran two silent receivers for 90 and 150 seconds with an ordinary stopped Sonos coordinator, including stopping one while the other continued. No Connect line-in calls were needed. A synthetic coordinator still loses its receiver after roughly 76 seconds. Promoting the receiver itself kept UDP/timing alive for 120 seconds after releasing the helper, while Sonos reported paused; that long test was muted. Setup still briefly needs another speaker; trusted virtual-player registration remains unresolved. Dynamic Sonos artwork remains unsupported.
-
-The controller also provides an experimental `udp-test` command for ordinary-group and detached receiver tests. It stays muted by default, including when sending a nonzero test signal. A [two-minute nonzero-PCM test](research/sonos-native/firmware-research/detached-pcm-followup.txt) retained the detached endpoint, still reporting paused. See the [UDP test instructions](research/sonos-native/README.md#controller-test-command-and-nonzero-pcm) for build requirements and bounded listening mode. This is a research command, not a selectable AirPlay playback backend.
-
-Latest listening result: [Kitchen sustained a clear tone](research/sonos-native/firmware-research/kitchen-listening-test.json) for a user-confirmed 25-second test at volume 35, including roughly 16 seconds after releasing the helper. Sonos still reported paused. Initial setup still needs another speaker. The later tds3 build integrates the UDP backend with AirPlay.
-
-Music follow-up: [Bathroom played clear music through an ending tone](research/sonos-native/firmware-research/bathroom-music-test.json) during a user-confirmed 30-second test at volume 35, with the helper released near the start. The initial music test was uncertain; the marked repeat confirmed short detached music playback. That short test preceded the tds3 AirPlay integration; long endurance remains unverified.
-
-Shared helper: the controller can now [save a user-selected Sonos helper](research/sonos-native/README.md#configure-one-shared-setup-helper) and reuse it for detached UDP tests. Two overlapping muted streams passed setup serialization, packet/timing and restoration checks, including stopping one while the other continued. The tds3 AirPlay backend now uses this setting when native mode is enabled.
+For problems, include the component, Git commit or release, architecture, error text and a redacted log excerpt in [an issue](https://github.com/thomasdye12/AirConnect-Sonos/issues). Never include an intercom token, private key or unredacted configuration. Changes are recorded in [CHANGELOG.md](CHANGELOG.md).

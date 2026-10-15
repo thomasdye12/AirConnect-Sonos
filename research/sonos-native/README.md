@@ -1,4 +1,4 @@
-> **tds3 update:** the native sender is now wired into AirPlay PCM output through `airupnp/src/sonos_native.c` and the shipped libraop patch. See the [current setup instructions](../../README.md#native-udp-airplay-tds3) and [integration evidence](firmware-research/airplay-native-integration.json). The bounded research commands and historical limitations below remain useful for reproducing individual experiments.
+> **Historical research guide:** the native sender is now integrated into AirPlay and intercom. Start with [current installation](../../docs/INSTALL.md), [architecture](../../docs/ARCHITECTURE.md) and [validation](../../docs/VALIDATION.md). The table and experiment notes below describe earlier stages, including superseded limitations; they are not the current feature matrix. Helper-free setup remains unfinished.
 
 # Sonos transport research
 

@@ -1,6 +1,6 @@
 # Build and validation details
 
-This document describes the experimental `v1.12.4-tds1` fork build. See [README.md](README.md) for status and [NOTICE.md](NOTICE.md) for provenance.
+This document covers the current fork build and records the tds3/tds4 timing changes. For fresh installation, use [INSTALL.md](docs/INSTALL.md); for current evidence, use [VALIDATION.md](docs/VALIDATION.md). See [README.md](README.md) for status and [NOTICE.md](NOTICE.md) for provenance.
 
 ## Source preparation
 
@@ -16,6 +16,8 @@ The AirUPnP Makefile accepts `RAOP_LIBRARY` so custom builds link the recompiled
 Both use upstream dependency archives. Existing compiler warnings remain; static linking has the usual upstream glibc/DNS/dlopen limitations. Successful `-h` execution is a smoke test, not complete playback validation.
 
 ## Tests
+
+For native lifecycle, intercom and dashboard coverage/commands, see [the current validation guide](docs/VALIDATION.md#automated-checks). The commands below focus on the original naming/metadata work.
 
 On macOS ARM64 after building:
 
@@ -39,7 +41,7 @@ The parser/format tests and API request were also run natively on a CloudKey. Bo
 ## Operational behavior
 
 - API room names/membership are loaded once per start, matching the previous external-generator workflow. Restart after room/group changes.
-- An unavailable or invalid configured API causes startup failure; systemd retries after 30 seconds. No stale on-disk cache is used.
+- If the configured API is unavailable/invalid, a validated API-bound cache less than 24 hours old can be used. Without a usable cache, startup fails and systemd retries after 30 seconds.
 - API names override per-device enabled/name settings when the API option is present.
 - Sender names come from AirPlay request headers; IP is the fallback. mDNS hostname fallback is not implemented.
 - Current received artwork is retained until replacement, explicit clear, teardown, or receiver destruction. Images are capped at 4 MiB. Sources that never send artwork cannot supply a cover through this mechanism.
@@ -83,8 +85,9 @@ and [sync-packet handling](https://github.com/mikebrady/shairport-sync/blob/mast
 changing RECORD's advertised delay. Positive values delay presentation; the
 common default is zero and device overrides are supported. The user reported
 roughly 500 ms early audio and a two-second pause tail after the initial timing
-fix. Kitchen received a 500 ms calibration for a further check. The pause tail
-remains unresolved; no pause-command arrival time was tied to the user's tap.
+fix. Kitchen received a 500 ms calibration for a further check at that stage. Those were historical calibration observations, not recommended defaults. Later
+FLUSH/pause work improved the tail according to the user; exact tap-to-silence
+latency remains unmeasured and source-dependent.
 
 Native continuity correction (tds4)
 ---------------------------------
