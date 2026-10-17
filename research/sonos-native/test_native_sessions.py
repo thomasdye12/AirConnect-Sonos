@@ -52,7 +52,7 @@ class NativeSessions(unittest.TestCase):
                 for n in range(packet_count):
                     decoded = AudioPacket.decode(rx.recv(4096))
                     self.assertEqual(decoded.pcm, block)
-                    self.assertEqual(decoded.sequence, first_sequence + n)
+                    self.assertEqual(decoded.sequence, 0x20000 + first_sequence + n)
                     self.assertEqual(decoded.byte_position, (first_sequence + n) * 1004)
                     timestamps.append(decoded.seconds * 1000000 + decoded.microseconds)
                 self.assertTrue(all(a < b for a, b in zip(timestamps, timestamps[1:])))

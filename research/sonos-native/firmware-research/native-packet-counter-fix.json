@@ -1,0 +1,41 @@
+{
+  "date": "2026-10-18",
+  "issue": "Native audio went silent after about six minutes while AirPlay and native timing continued.",
+  "cause": {
+    "old_wire_ids": [
+      "0002fffe",
+      "0002ffff",
+      "00020000"
+    ],
+    "correct_wire_ids": [
+      "0002fffe",
+      "0002ffff",
+      "00030000"
+    ],
+    "packet_frames": 251,
+    "sample_rate": 44100,
+    "old_wrap_packets": 65536,
+    "old_wrap_seconds": 373.00535147392293
+  },
+  "firmware_evidence": {
+    "image": "Privately extracted Play:3 anacapad 86; firmware not redistributed",
+    "unpack": "0x10590d58: at 0x10590d80 lwz r9,0(r4), then stw r9,0(r3), copying the full BE32 packet ID. The following byte at offset 4 is the protocol version.",
+    "receiver": "0x103f2fc8 passes raw packet to unpacker; 0x103f3138 loads the full parsed word for packet lookup at 0x10590efc. Node RX diagnostics describe duplicate/old/out-of-bounds packet IDs.",
+    "scope": "Static firmware evidence plus observed runtime timing; no claim of an official protocol specification."
+  },
+  "checks": {
+    "original_capture_exact_roundtrips": 13826,
+    "c_packet_sender_tests": "passed on macOS",
+    "python_codec_transport_tests": 10,
+    "independent_native_sessions": 8,
+    "arm_packet_tests": "passed",
+    "realtime_65540_packet_test": "passed: production sender at real pacing, independently checked each wire ID across 0x0002ffff -> 0x00030000",
+    "audible_endurance": "pending"
+  },
+  "deployed_clock_verification": {
+    "requests": 334,
+    "replies": 334,
+    "standard_fraction_reply_offset_stddev_ms": 0.02365,
+    "result": "Corrected clock encoding was present during the failed session; not sufficient alone."
+  }
+}

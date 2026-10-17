@@ -54,9 +54,9 @@ The parser intentionally rejects unsupported formats and fragmented IP packets.
 Only one firmware/format/capture combination has been validated.
 
 Observed packet layout (offsets within UDP payload)
-  0..1    00 02, meaning not established
-  2..3    Big-endian 16-bit sequence counter, wraps at 65535
-  4..7    03 00 00 00 for observed audio packets; meaning not established
+  0..3    Big-endian 32-bit packet ID (corrected October 18; see below)
+  4       03: protocol version
+  5..7    00 00 00 for observed audio packets
   8       01 for observed audio; short stop packets use other values
   9..11   00 03 f0, consistent with 1008-byte format-plus-PCM length
  12..15   Big-endian seconds on the source's local clock
@@ -118,3 +118,16 @@ What remains before a real bridge
 
 These results are a research prototype, not a deployable native Sonos bridge.
 Run probe scripts as standalone commands, not as importable modules.
+
+Packet ID correction, October 18, 2026
+--------------------------------------
+The initial capture had 00 02 in the high half of the packet ID. That was
+previously mistaken for a fixed prefix, leading to a 16-bit sender counter.
+Firmware packet unpacking reads the entire first word as one 32-bit ID;
+protocol version is the following byte (03), not 00 02. The production sender
+now retains its accepted initial ID 0x00020000 and increments all 32 bits.
+Previously it jumped from 0x0002ffff back to 0x00020000 after 65,536 packets,
+about 373 seconds at 251 frames/packet and 44.1 kHz. A listener reported silence
+at this boundary while audio and timing packets continued. This is strong
+support for the cause, but sustained audible validation is still required.
+See firmware-research/native-packet-counter-fix.json for scoped evidence.

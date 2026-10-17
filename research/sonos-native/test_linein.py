@@ -16,11 +16,19 @@ class CodecTests(unittest.TestCase):
     def test_unknown_format(self):
         raw=bytearray(AudioPacket(0,1,0,0,bytes(1004)).encode());raw[24]=1
         with self.assertRaises(ValueError):AudioPacket.decode(raw)
-    def test_sequence_wrap_and_timing(self):
+    def test_sequence_carry_and_timing(self):
         ps=[AudioPacket.decode(p) for p in packetize(bytes(1004*3),100.25,65534)]
-        self.assertEqual([p.sequence for p in ps],[65534,65535,0])
+        self.assertEqual([p.sequence for p in ps],[65534,65535,65536])
         self.assertEqual([p.byte_position for p in ps],[0,1004,2008])
         self.assertAlmostEqual(ps[2].microseconds-ps[0].microseconds,2*251/44100*1e6,delta=1)
+    def test_full_width_packet_ids(self):
+        for seq, header in ((0x2ffff, '0002ffff'), (0x30000, '00030000'), (0x12345678, '12345678')):
+            raw=AudioPacket(seq,1,0,0,bytes(1004)).encode()
+            self.assertEqual(raw[:4],bytes.fromhex(header))
+            self.assertEqual(AudioPacket.decode(raw).sequence,seq)
+        packets=[AudioPacket.decode(p) for p in packetize(bytes(300*1004),1,0xfffffffe)]
+        self.assertEqual([p.sequence for p in packets[:3]],[0xfffffffe,0xffffffff,0])
+
     def test_partial_pcm_rejected(self):
         with self.assertRaises(ValueError):list(packetize(bytes(4),0))
     def test_clock_uses_binary_fraction_and_is_continuous(self):
@@ -48,7 +56,7 @@ class CodecTests(unittest.TestCase):
         self.assertEqual(len(received),20)
         decoded=[AudioPacket.decode(d) for _,d in received]
         self.assertEqual(b''.join(p.pcm for p in decoded),pcm)
-        self.assertEqual([p.sequence for p in decoded],list(range(20)))
+        self.assertEqual([p.sequence for p in decoded],list(range(0x20000,0x20000+20)))
         self.assertAlmostEqual(received[-1][0]-received[0][0],19*251/44100,delta=.05)
 
 if __name__=='__main__':unittest.main()

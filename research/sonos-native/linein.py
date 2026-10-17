@@ -81,7 +81,7 @@ class AudioPacket:
         # Sonos omits trailing zero bytes; the logical record length remains 1008.
         if len(data) < 28 or len(data) > 1032:
             raise ValueError('Not a supported audio packet')
-        if data[:2] != b'\x00\x02' or data[4:12] != bytes.fromhex('03000000010003f0'):
+        if data[4:12] != bytes.fromhex('03000000010003f0'):
             raise ValueError('Unknown audio framing')
         if data[24:28] != bytes.fromhex('0210ac44'):
             raise ValueError('Only observed 44.1kHz / 16-bit / stereo format supported')
@@ -89,12 +89,12 @@ class AudioPacket:
         if us >= 1000000:
             raise ValueError('Invalid timestamp fraction')
         pcm = data[28:].ljust(1004, b'\0')
-        return cls(int.from_bytes(data[2:4], 'big'), sec, us, position, pcm, 1032-len(data))
+        return cls(int.from_bytes(data[:4], 'big'), sec, us, position, pcm, 1032-len(data))
 
     def encode(self):
         if len(self.pcm) != 1004 or not 0 <= self.microseconds < 1000000:
             raise ValueError('Expected 251 stereo frames and a valid timestamp')
-        head = b'\x00\x02' + struct.pack('!H', self.sequence) + bytes.fromhex('03000000010003f0')
+        head = struct.pack('!I', self.sequence) + bytes.fromhex('03000000010003f0')
         head += struct.pack('!III', self.seconds, self.microseconds, self.byte_position)
         head += bytes.fromhex('0210ac44')
         return (head + self.pcm).rstrip(b'\0')
@@ -110,8 +110,8 @@ def decode_capture(path, output, source, destination):
         if first is None: first = d.time
         stats['udp_packets'] += 1
         if len(d.data) >= 4:
-            seq = int.from_bytes(d.data[2:4], 'big')
-            if last_sequence is not None and seq != (last_sequence+1)&65535:
+            seq = int.from_bytes(d.data[:4], 'big')
+            if last_sequence is not None and seq != (last_sequence+1)&0xffffffff:
                 sequence_errors.append([last_sequence, seq])
             last_sequence = seq
         if len(d.data) < 28:

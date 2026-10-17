@@ -1,6 +1,6 @@
 # Validation and known limitations
 
-This records runtime observations through October 18, 2026. The published tds4 AirPlay binaries predate the intercom, topology, recovery and native clock corrections in current source. The tests below are evidence from specific runs, not a claim that every platform, speaker model or network is supported.
+This records runtime observations through October 18, 2026. The published tds4 AirPlay binaries predate the intercom, topology, recovery and native clock/counter corrections in current source. The tests below are evidence from specific runs, not a claim that every platform, speaker model or network is supported.
 
 ## What was observed
 
@@ -24,7 +24,13 @@ Separate silent receiver streams and independent stopping were exercised during 
 
 The native clock responder previously encoded microseconds with a 12-bit left shift. NTP instead uses a 32-bit binary fraction of a second: `(microseconds << 32) / 1000000`, evaluated with 64-bit arithmetic. The old approximation introduced a repeating error of up to 46.3 ms and a jump at each second boundary. Re-analysis of 115 real Sonos replies supported standard NTP decoding: capture-to-source offset standard deviation was approximately 0.16 ms, versus 15.93 ms under the previous interpretation. This corrects an earlier research inference and its matching test fixture.
 
-The C sender and Python research responders now use standard fractions. Tests independently assert half- and quarter-second values and microsecond continuity through a rollover. Native control also reports packet, clock-reply and late-packet counts every 30 seconds. These counters show transport activity; they cannot prove that the speaker renders audio. The clock bug is a plausible explanation for later silence, but the reported long-session dropout is not considered acoustically resolved until a listener confirms sustained playback after the fix.
+The C sender and Python research responders now use standard fractions. Tests independently assert half- and quarter-second values and microsecond continuity through a rollover. Native control also reports packet, clock-reply and late-packet counts every 30 seconds. These counters show transport activity; they cannot prove that the speaker renders audio. A subsequent listener test still stopped after roughly six minutes. The deployed clock-only capture contained 334 requests and 334 replies with the corrected fraction encoding, so the clock correction alone did not resolve the dropout.
+
+## Packet counter correction, October 18
+
+The first four bytes of the native UDP packet are one big-endian 32-bit ID. The initial short capture kept the upper two bytes at `00 02`; the implementation incorrectly treated those bytes as fixed and used a 16-bit counter. After 65,536 packets (about 6 minutes 13 seconds), the wire ID jumped from `0x0002ffff` back to `0x00020000`. The listener's dropout timing matched this boundary while sender and clock traffic continued.
+
+Firmware unpacking reads all four bytes into the packet ID and receiver ordering uses that full value. The C and Python codecs now preserve all 32 bits; the sender keeps its previously accepted initial ID and increments without the premature wrap. Tests check independent byte vectors at the old boundary, and both codecs still reproduce all 13,826 original captured audio packets exactly. A real-time loopback run also passed all 65,540 packets, independently reading the wire ID across the old rollover. This source fix is deployed to the production AirPlay bridge; existing experimental AirPlay 2/intercom worker binaries require a separate rebuild. Long audible playback after this correction remains unconfirmed.
 
 ## Automated checks
 
@@ -38,6 +44,8 @@ python3 -m unittest discover -s tests -p 'test_controller.py'
 python3 -m unittest discover -s tests -p 'test_intercom.py'
 python3 -m unittest discover -s tests -p 'test_dashboard.py'
 make -C research/sonos-native/native test
+# Optional real-time 65,540-packet regression (about 6 minutes 13 seconds):
+research/sonos-native/native/build/test_sender --long
 sh tests/build-native-driver.sh
 python3 tests/test_native_control.py
 ```
