@@ -30,7 +30,7 @@
     "independent_native_sessions": 8,
     "arm_packet_tests": "passed",
     "realtime_65540_packet_test": "passed: production sender at real pacing, independently checked each wire ID across 0x0002ffff -> 0x00030000",
-    "audible_endurance": "pending"
+    "audible_endurance": "Listener confirmed music still playing clearly after approximately eight minutes, beyond the former 373-second cutoff."
   },
   "deployed_clock_verification": {
     "requests": 334,

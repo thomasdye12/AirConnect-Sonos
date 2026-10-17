@@ -128,6 +128,8 @@ protocol version is the following byte (03), not 00 02. The production sender
 now retains its accepted initial ID 0x00020000 and increments all 32 bits.
 Previously it jumped from 0x0002ffff back to 0x00020000 after 65,536 packets,
 about 373 seconds at 251 frames/packet and 44.1 kHz. A listener reported silence
-at this boundary while audio and timing packets continued. This is strong
-support for the cause, but sustained audible validation is still required.
+at this boundary while audio and timing packets continued. After correction,
+a live capture passed the boundary with 70,000 consecutive IDs and the listener
+confirmed clear music after approximately eight minutes. Longer endurance
+remains untested.
 See firmware-research/native-packet-counter-fix.json for scoped evidence.
