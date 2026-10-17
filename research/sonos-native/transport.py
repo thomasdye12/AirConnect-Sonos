@@ -8,7 +8,7 @@ NTP_EPOCH = 2208988800
 def clock_timestamp(seconds):
     micros = round(seconds*1e6)
     whole, fraction = divmod(micros, 1000000)
-    return struct.pack('!II', (whole+NTP_EPOCH)&0xffffffff, fraction<<12)
+    return struct.pack('!II', (whole+NTP_EPOCH)&0xffffffff, (fraction<<32)//1000000)
 
 def clock_response(request, received, sent):
     if len(request) != 48 or request[0]&7 != 3:

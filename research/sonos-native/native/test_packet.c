@@ -15,9 +15,20 @@ int main(void) {
     assert(!sonos_packet_decode(packet,27,&seq,&us,&pos,decoded,1004));
     assert(!sonos_packet_decode(packet,1033,&seq,&us,&pos,decoded,1004));
     request[0]=0x1b;memcpy(request+40,"abcdefgh",8);
-    assert(sonos_clock_reply(reply,48,request,48,1896563975895,1896563976219));
-    const uint8_t expected[]={0x83,0xc7,0x6e,0xf3,0xee,0x41,0x70,0x00};
-    assert(!memcmp(reply+32,expected,8));assert(!memcmp(reply+24,"abcdefgh",8));
+    assert(sonos_clock_reply(reply,48,request,48,500000,750000));
+    const uint8_t half[]={0x83,0xaa,0x7e,0x80,0x80,0,0,0};
+    const uint8_t three_quarters[]={0x83,0xaa,0x7e,0x80,0xc0,0,0,0};
+    assert(!memcmp(reply+32,half,8));assert(!memcmp(reply+40,three_quarters,8));
+    assert(!memcmp(reply+24,"abcdefgh",8));
+    /* Independent decoding: every microsecond, including a second rollover,
+     * must advance by approximately 4295 binary-fraction units, not 46 ms. */
+    uint64_t previous=0;
+    for(uint64_t us=999990;us<=1000010;us++) {
+        assert(sonos_clock_reply(reply,48,request,48,us,us));
+        uint64_t stamp=0;for(size_t j=32;j<40;j++)stamp=(stamp<<8)|reply[j];
+        if(previous)assert(stamp-previous>=4294 && stamp-previous<=4295);
+        previous=stamp;
+    }
     assert(!sonos_clock_reply(reply,47,request,48,0,0));
     request[0]=0;assert(!sonos_clock_reply(reply,48,request,48,0,0));
     return 0;

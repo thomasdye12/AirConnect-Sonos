@@ -23,9 +23,11 @@ class CodecTests(unittest.TestCase):
         self.assertAlmostEqual(ps[2].microseconds-ps[0].microseconds,2*251/44100*1e6,delta=1)
     def test_partial_pcm_rejected(self):
         with self.assertRaises(ValueError):list(packetize(bytes(4),0))
-    def test_clock_matches_observed_representation(self):
-        # Values from one observed reply, represented without device identifiers.
-        self.assertEqual(clock_timestamp(1896563.975895),bytes.fromhex('83c76ef3ee417000'))
+    def test_clock_uses_binary_fraction_and_is_continuous(self):
+        self.assertEqual(clock_timestamp(.5),bytes.fromhex('83aa7e8080000000'))
+        self.assertEqual(clock_timestamp(.75),bytes.fromhex('83aa7e80c0000000'))
+        stamps=[int.from_bytes(clock_timestamp(us/1e6),'big') for us in range(999990,1000011)]
+        self.assertTrue(all(4294<=b-a<=4295 for a,b in zip(stamps,stamps[1:])))
     def test_clock_origin_echo(self):
         request=bytearray(48);request[0]=0x1b;request[40:48]=b'12345678'
         response=clock_response(request,100.25,100.5)

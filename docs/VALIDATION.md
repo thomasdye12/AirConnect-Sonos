@@ -1,6 +1,6 @@
 # Validation and known limitations
 
-This describes the current source through runtime commit `484cd25` (October 15, 2026). The published tds4 AirPlay binaries predate the intercom and recovery changes. The tests below are historical evidence, not a claim that every platform, speaker model or network is supported.
+This records runtime observations through October 18, 2026. The published tds4 AirPlay binaries predate the intercom, topology, recovery and native clock corrections in current source. The tests below are evidence from specific runs, not a claim that every platform, speaker model or network is supported.
 
 ## What was observed
 
@@ -15,8 +15,16 @@ This describes the current source through runtime commit `484cd25` (October 15, 
 | Live intercom | Short audible sessions worked; a later session ended with a worker/congestion error | Supports the feature's usefulness but not universal reliability |
 | Recovery regression, 90-second muted stream | Survived an intentional 351 ms worker pause, with one recovery, stale PCM discarded, clean exit and speaker restoration | Continued transport through a bounded stall; audible continuity remains unverified |
 | Subsequent live input | Completed cleanly with no reported queue drops or recovery | Full audible quality and the reason for client closure were not confirmed |
+| Updated native handoff in AirPlay | 30-second native and 40-second full AirPlay muted checks passed; listener reported improved playback but a later dropout after several minutes | Fixes the observed early controller failure; does not establish long-duration audible reliability |
+| Native clock fraction correction | C packet/sender tests, Python transport tests and native ARM packet tests passed | Standard NTP fractions and continuity across second boundaries; audible endurance still needs confirmation |
 
 Separate silent receiver streams and independent stopping were exercised during research. Concurrent **audible** AirPlay/intercom endurance still needs validation. Older helper-free/synthetic-coordinator experiments failed around 76 seconds; those historical failures are not the same setup as the current helper-assisted promotion path.
+
+## Clock correction, October 18
+
+The native clock responder previously encoded microseconds with a 12-bit left shift. NTP instead uses a 32-bit binary fraction of a second: `(microseconds << 32) / 1000000`, evaluated with 64-bit arithmetic. The old approximation introduced a repeating error of up to 46.3 ms and a jump at each second boundary. Re-analysis of 115 real Sonos replies supported standard NTP decoding: capture-to-source offset standard deviation was approximately 0.16 ms, versus 15.93 ms under the previous interpretation. This corrects an earlier research inference and its matching test fixture.
+
+The C sender and Python research responders now use standard fractions. Tests independently assert half- and quarter-second values and microsecond continuity through a rollover. Native control also reports packet, clock-reply and late-packet counts every 30 seconds. These counters show transport activity; they cannot prove that the speaker renders audio. The clock bug is a plausible explanation for later silence, but the reported long-session dropout is not considered acoustically resolved until a listener confirms sustained playback after the fix.
 
 ## Automated checks
 

@@ -282,7 +282,7 @@ static void failure(struct sonos_native_device *d,const char *stage) {
 }
 static void *control(void *arg) {
     struct session *s=arg;struct sonos_native_device *d=s->device;
-    uint64_t first=0;int promoted=0,last_volume=-1;
+    uint64_t first=0,reported=millis();int promoted=0,last_volume=-1;
     const char *stage="setting receiver volume/mute";
     while(!stopped(s)) {
         pthread_mutex_lock(&d->mutex);int volume=d->volume;pthread_mutex_unlock(&d->mutex);
@@ -293,6 +293,12 @@ static void *control(void *arg) {
             last_volume=volume;
         }
         struct sonos_sender_stats stats;sonos_sender_get_stats(s->sender,&stats);
+        if(millis()-reported>=30000) {
+            LOG_INFO("native progress %s packets=%llu clocks=%llu late=%llu",d->ip,
+                (unsigned long long)stats.packets,(unsigned long long)stats.clock_requests,
+                (unsigned long long)stats.late_packets);
+            reported=millis();
+        }
         if(!first && stats.packets)first=millis();
         if(!promoted && first && millis()-first>=3000) {
             char transport[256],uri[80];strcpy(transport,s->settings);char *comma=strrchr(transport,',');if(comma)comma[1]=0;

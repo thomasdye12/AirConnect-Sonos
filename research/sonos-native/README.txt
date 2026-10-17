@@ -70,9 +70,13 @@ Clock
 Observed 48-byte requests/replies on source UDP port 12300 have NTP-style
 structure. Reply echoes the request transmit timestamp into origin field.
 Seconds use the NTP epoch offset plus the same local seconds as audio packets.
-Fraction fields are consistent with microseconds shifted left by 12, not the
-usual exact NTP fractional-second conversion. This matches an observed reply
-in a test; a complete clock servo, drift handling and playout policy are absent.
+Fraction fields use the standard NTP binary fraction: floor(microseconds *
+2^32 / 1,000,000). The earlier shift-by-12 inference from one reply was wrong.
+Re-analysis of 115 real-source replies found 0.16 ms offset standard deviation
+with standard NTP decoding, versus 15.93 ms with the earlier interpretation.
+That approximation creates up to 46.3 ms of error and a jump each second.
+Tests now check known half/quarter-second values and continuity at rollover.
+A complete clock servo, drift handling and playout policy remain absent.
 
 Earlier live findings (superseded in part by the group-member success)
 1. AudioIn/StartTransmissionToGroup on the real Connect succeeds over ordinary

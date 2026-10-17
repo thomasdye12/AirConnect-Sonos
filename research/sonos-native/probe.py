@@ -5,6 +5,7 @@ Requires a known real line-in source. Does NOT emulate Sonos discovery/identity.
 import argparse,json,pathlib,socket,struct,threading,time,math,wave,xml.etree.ElementTree as E
 from linein import AudioPacket
 from soap import call
+from transport import clock_timestamp
 
 AV='/MediaRenderer/AVTransport/Control'; RC='/MediaRenderer/RenderingControl/Control'
 def values(r):
@@ -45,10 +46,9 @@ def main(a):
         native=NativeSender(a.native_library,local,a.receiver)
     else:
         clock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);clock.bind((local,12300));clock.settimeout(.1)
-    # Matches observed Sonos clock representation: NTP epoch seconds,
-    # microseconds shifted left 12 (rather than an exact 2^32 fraction).
+    # Use the same standard NTP conversion as the native sender.
     def timestamp():
-        t=time.monotonic();s=int(t);return struct.pack('!II',s+2208988800,int((t-s)*1e6)<<12)
+        return clock_timestamp(time.monotonic())
     def clock_server():
         while not done.is_set():
             try:data,addr=clock.recvfrom(2048)

@@ -33,7 +33,9 @@ int sonos_packet_decode(const uint8_t *p, size_t n, uint16_t *seq,
 }
 static void clock_stamp(uint8_t *p,uint64_t us) {
     put32(p,(uint32_t)(us/1000000+UINT64_C(2208988800)));
-    put32(p+4,(uint32_t)(us%1000000)<<12);
+    /* NTP uses a 32-bit fraction of one second. Shifting microseconds by 12
+     * under-reports time by up to 46.3 ms, then jumps at each second boundary. */
+    put32(p+4,(uint32_t)(((us%1000000)<<32)/1000000));
 }
 int sonos_clock_reply(uint8_t *out,size_t cap,const uint8_t *req,size_t n,
                       uint64_t received,uint64_t sent) {
