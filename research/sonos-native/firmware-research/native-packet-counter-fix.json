@@ -37,5 +37,21 @@
     "replies": 334,
     "standard_fraction_reply_offset_stddev_ms": 0.02365,
     "result": "Corrected clock encoding was present during the failed session; not sufficient alone."
+  },
+  "live_header_capture": {
+    "packets": 70000,
+    "duration_seconds": 398.407013,
+    "first_id": "0x00020000",
+    "last_id": "0x3116f",
+    "packet_id_discontinuities": 0,
+    "boundary": [
+      "0x0002ffff",
+      "0x00030000"
+    ],
+    "boundary_elapsed_seconds": 373.005432,
+    "capture_scope": "Outgoing audio headers only; no PCM or private addresses published. Continuous IDs prove transmitted numbering, not audible rendering.",
+    "tcpdump_kernel_drops": 0,
+    "tcpdump_interface_drop_counter": 1576,
+    "interface_counter_scope": "Unattributed interface counter; cannot identify losses in this stream. Captured target IDs were contiguous."
   }
 }
