@@ -12,7 +12,8 @@
 #include <unistd.h>
 struct sonos_sender {
     int audio,clock,stop;
-    uint16_t clock_port,sequence;
+    uint16_t clock_port;
+    uint32_t sequence;
     uint32_t position,lead_us;
     uint32_t recovery_limit_us;
     uint64_t recoveries;
@@ -65,6 +66,7 @@ struct sonos_sender *sonos_sender_open(const char *local,const char *peer,uint16
     struct sockaddr_in l={0},p={0};l.sin_family=p.sin_family=AF_INET;
     if(inet_pton(AF_INET,local,&l.sin_addr)!=1 || inet_pton(AF_INET,peer,&p.sin_addr)!=1) {errno=EINVAL;return 0;}
     struct sonos_sender *s=calloc(1,sizeof(*s));if(!s)return 0;
+    s->sequence=SONOS_INITIAL_SEQUENCE;
     s->audio=s->clock=-1;s->peer=p.sin_addr;s->lead_us=lead;
     int e=pthread_mutex_init(&s->mutex,0);if(e){free(s);errno=e;return 0;}
     s->audio=socket(AF_INET,SOCK_DGRAM,0);if(s->audio<0)goto fail;

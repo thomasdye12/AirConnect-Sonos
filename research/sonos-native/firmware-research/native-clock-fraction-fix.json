@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-18",
+  "issue": "Native clock fraction was approximated as microseconds shifted left 12",
+  "correction": "Use floor(microseconds * 2^32 / 1000000) with 64-bit intermediate arithmetic",
+  "evidence": {
+    "real_sonos_reply_count": 115,
+    "standard_ntp_offset_stddev_ms": 0.1622,
+    "old_interpretation_offset_stddev_ms": 15.9316,
+    "standard_ntp_offset_spread_ms": 1.3499,
+    "old_interpretation_offset_spread_ms": 48.2218
+  },
+  "tests": [
+    "C known fractional values and second-boundary continuity",
+    "C UDP sender loopback",
+    "Python packet/transport suite: 9 tests passed",
+    "ARMv7 native C packet regression passed"
+  ],
+  "limitations": [
+    "Packet/clock traffic does not establish audible playback",
+    "Reported long-session silence requires listener validation after deployment"
+  ],
+  "privacy": "Raw captures and device identifiers omitted"
+}

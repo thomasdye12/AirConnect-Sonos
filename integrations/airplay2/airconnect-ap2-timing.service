@@ -1,0 +1,12 @@
+[Unit]
+Description=Experimental AirConnect AirPlay 2 timing
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=LD_LIBRARY_PATH=/srv/airconnect-airplay2/prefix/lib
+ExecStart=/srv/airconnect-airplay2/prefix/bin/nqptp -v
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=10

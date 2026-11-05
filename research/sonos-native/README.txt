@@ -54,9 +54,9 @@ The parser intentionally rejects unsupported formats and fragmented IP packets.
 Only one firmware/format/capture combination has been validated.
 
 Observed packet layout (offsets within UDP payload)
-  0..1    00 02, meaning not established
-  2..3    Big-endian 16-bit sequence counter, wraps at 65535
-  4..7    03 00 00 00 for observed audio packets; meaning not established
+  0..3    Big-endian 32-bit packet ID (corrected October 18; see below)
+  4       03: protocol version
+  5..7    00 00 00 for observed audio packets
   8       01 for observed audio; short stop packets use other values
   9..11   00 03 f0, consistent with 1008-byte format-plus-PCM length
  12..15   Big-endian seconds on the source's local clock
@@ -70,9 +70,13 @@ Clock
 Observed 48-byte requests/replies on source UDP port 12300 have NTP-style
 structure. Reply echoes the request transmit timestamp into origin field.
 Seconds use the NTP epoch offset plus the same local seconds as audio packets.
-Fraction fields are consistent with microseconds shifted left by 12, not the
-usual exact NTP fractional-second conversion. This matches an observed reply
-in a test; a complete clock servo, drift handling and playout policy are absent.
+Fraction fields use the standard NTP binary fraction: floor(microseconds *
+2^32 / 1,000,000). The earlier shift-by-12 inference from one reply was wrong.
+Re-analysis of 115 real-source replies found 0.16 ms offset standard deviation
+with standard NTP decoding, versus 15.93 ms with the earlier interpretation.
+That approximation creates up to 46.3 ms of error and a jump each second.
+Tests now check known half/quarter-second values and continuity at rollover.
+A complete clock servo, drift handling and playout policy remain absent.
 
 Earlier live findings (superseded in part by the group-member success)
 1. AudioIn/StartTransmissionToGroup on the real Connect succeeds over ordinary
@@ -114,3 +118,18 @@ What remains before a real bridge
 
 These results are a research prototype, not a deployable native Sonos bridge.
 Run probe scripts as standalone commands, not as importable modules.
+
+Packet ID correction, October 18, 2026
+--------------------------------------
+The initial capture had 00 02 in the high half of the packet ID. That was
+previously mistaken for a fixed prefix, leading to a 16-bit sender counter.
+Firmware packet unpacking reads the entire first word as one 32-bit ID;
+protocol version is the following byte (03), not 00 02. The production sender
+now retains its accepted initial ID 0x00020000 and increments all 32 bits.
+Previously it jumped from 0x0002ffff back to 0x00020000 after 65,536 packets,
+about 373 seconds at 251 frames/packet and 44.1 kHz. A listener reported silence
+at this boundary while audio and timing packets continued. After correction,
+a live capture passed the boundary with 70,000 consecutive IDs and the listener
+confirmed clear music after approximately eight minutes. Longer endurance
+remains untested.
+See firmware-research/native-packet-counter-fix.json for scoped evidence.

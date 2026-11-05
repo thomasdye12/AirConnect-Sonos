@@ -63,6 +63,8 @@ sh build-intercom.sh
 
 Do not skip `prepare-source.sh`: it initializes pinned dependencies and applies the custom RAOP patch. A dirty `common/libraop` submodule afterwards is expected. Do not reset it or publish a replacement submodule pointer. Follow the [complete installation guide](docs/INSTALL.md) to configure and install the services; the build commands alone do not install anything.
 
+An optional [AirPlay 2 frontend](integrations/airplay2/README.md) uses Shairport Sync with a timed Sonos worker. Its [per-room deployment](integrations/airplay2/MULTIROOM.md) provides stable room identities, independent timing and stereo-partner handoff. Single-room iPhone playback has been listener-confirmed; multi-room discovery and muted transport checks are recorded separately from acoustic synchronization and endurance, which remain unverified. It is separate from the normal installer and retains the real helper requirement.
+
 ## What is still experimental
 
 | Area | Current position |

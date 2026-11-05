@@ -8,7 +8,7 @@ NTP_EPOCH = 2208988800
 def clock_timestamp(seconds):
     micros = round(seconds*1e6)
     whole, fraction = divmod(micros, 1000000)
-    return struct.pack('!II', (whole+NTP_EPOCH)&0xffffffff, fraction<<12)
+    return struct.pack('!II', (whole+NTP_EPOCH)&0xffffffff, (fraction<<32)//1000000)
 
 def clock_response(request, received, sent):
     if len(request) != 48 or request[0]&7 != 3:
@@ -20,13 +20,13 @@ def clock_response(request, received, sent):
     response[40:48] = clock_timestamp(sent)
     return bytes(response)
 
-def packetize(pcm, start_time, sequence=0, byte_position=0):
+def packetize(pcm, start_time, sequence=0x00020000, byte_position=0):
     if len(pcm)%1004:
         raise ValueError('PCM input must contain whole 251-frame packets')
     for n,offset in enumerate(range(0,len(pcm),1004)):
         ts=start_time+n*251/44100
         sec=int(ts)
-        yield AudioPacket((sequence+n)&65535,sec,int((ts-sec)*1e6),
+        yield AudioPacket((sequence+n)&0xffffffff,sec,int((ts-sec)*1e6),
                           (byte_position+offset)&0xffffffff,pcm[offset:offset+1004]).encode()
 
 def send_pcm(sock, pcm, lead_seconds=.1):

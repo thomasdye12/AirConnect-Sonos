@@ -23,6 +23,7 @@ class NativeControl(unittest.TestCase):
         original = {ip: dict(v) for ip, v in state.items()}
         joined, calls, fail_promotion = [False], [], [False]
         delayed_detach, never_converge, detached_at = [False], [False], [None]
+        bonded, foreign_member, partner_rejoined = [False], [False], [True]
         def topology(view):
             if detached_at[0] is not None and not never_converge[0] and time.monotonic() >= detached_at[0]:
                 joined[0] = False
@@ -35,7 +36,18 @@ class NativeControl(unittest.TestCase):
             for coord, members in groups:
                 group = E.SubElement(root, 'ZoneGroup', Coordinator=coord, ID=coord + ':1')
                 for ip in members:
-                    E.SubElement(group, 'ZoneGroupMember', UUID=UA if ip == A else UB, Location='http://' + ip + ':1400/xml/device_description.xml')
+                    member = E.SubElement(group, 'ZoneGroupMember', UUID=UA if ip == A else UB, Location='http://' + ip + ':1400/xml/device_description.xml')
+                    if ip == A and (bonded[0] or foreign_member[0]):
+                        peer = 'RINCON_02000000000301400'
+                        # Route the simulated partner to the same fake HTTP
+                        # server; its x-rincon:UA command is handled separately.
+                        attrs = dict(UUID=peer, Location='http://' + A + ':1400/xml/device_description.xml')
+                        if bonded[0]:
+                            channel_map = UA + ':LF,LF;' + peer + ':RF,RF'
+                            member.set('ChannelMapSet', channel_map)
+                            attrs.update(Invisible='1', ChannelMapSet=channel_map)
+                        if joined[0] or partner_rejoined[0]:
+                            E.SubElement(group, 'ZoneGroupMember', **attrs)
             return E.tostring(root, encoding='unicode')
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *args): pass
@@ -58,8 +70,11 @@ class NativeControl(unittest.TestCase):
                 elif name == 'SetMute': state[ip]['mute'] = args['DesiredMute']
                 elif name == 'SetVolume': state[ip]['volume'] = args['DesiredVolume']
                 elif name == 'SetAVTransportURI':
-                    state[ip]['uri'], state[ip]['meta'] = args['CurrentURI'], args['CurrentURIMetaData']
-                    if ip == A and args['CurrentURI'].startswith('x-rincon:'): joined[0] = True
+                    if bonded[0] and args['CurrentURI'] == 'x-rincon:' + UA:
+                        partner_rejoined[0] = True
+                    else:
+                        state[ip]['uri'], state[ip]['meta'] = args['CurrentURI'], args['CurrentURIMetaData']
+                        if ip == A and args['CurrentURI'].startswith('x-rincon:'): joined[0] = True
                 elif name in ('BecomeGroupCoordinator', 'BecomeCoordinatorOfStandaloneGroup'):
                     if delayed_detach[0] and name == 'BecomeGroupCoordinator':
                         pass  # Acknowledged, but topology still shows old membership.
@@ -69,6 +84,8 @@ class NativeControl(unittest.TestCase):
                         joined[0] = False
                     if name == 'BecomeGroupCoordinator':
                         assert self.headers.get('x-sonos-clone-gc') == '1'
+                        assert args.get('OtherMembers', '') == ('RINCON_02000000000301400' if bonded[0] else '')
+                        if bonded[0]:partner_rejoined[0] = False
                 elif name == 'Stop': state[ip]['transport'] = 'STOPPED'
                 elif name not in ('ChangeTransportSettings', 'RemoveMember'): raise AssertionError(name)
                 response = E.Element('Response')
@@ -90,7 +107,7 @@ class NativeControl(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 helper = Path(directory) / 'helper.json'
                 helper.write_text(json.dumps({'version': 1, 'helper': {'address': B, 'uuid': UB, 'name': 'Test helper'}}))
-                driver = Path(__file__).parent / 'bin/native_output_driver'
+                driver = Path(os.environ.get('NATIVE_TEST_DRIVER', str(Path(__file__).parent / 'bin/native_output_driver')))
                 command = [str(driver), str(helper), A, 'http://' + A + ':1400/xml/device_description.xml', 'uuid:' + UA, '7', '25']
                 run = subprocess.run(command, capture_output=True, text=True, timeout=25)
                 self.assertEqual(run.returncode, 0, run.stderr)
@@ -129,6 +146,18 @@ class NativeControl(unittest.TestCase):
                 self.assertEqual(run.returncode, 5, run.stderr)
                 self.assertTrue(all(action.startswith('Get') for ip, action in calls))
                 self.assertEqual(state[A], original[A])
+                state[B]['transport'] = 'STOPPED'; fail_promotion[0] = False
+                calls.clear(); foreign_member[0] = True
+                run = subprocess.run(command, capture_output=True, text=True, timeout=10)
+                self.assertEqual(run.returncode, 5, run.stderr)
+                self.assertTrue(all(action.startswith('Get') for ip, action in calls))
+                foreign_member[0] = False; bonded[0] = True
+                calls.clear()
+                run = subprocess.run(command, capture_output=True, text=True, timeout=25)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertEqual(run.stderr.count(': verified'), 2)
+                self.assertEqual(state, original)
+                self.assertTrue(partner_rejoined[0])
         finally:
             stop.set(); audio.join(); rx.close()
             for server in servers: server.shutdown(); server.server_close()
