@@ -2,7 +2,25 @@
 
 This optional frontend combines pinned Shairport Sync/NQPTP with an AirConnect timed Sonos worker. It is under development and is **not included in the normal installer or released ARM binaries**. Keep the existing AirPlay frontend available for rollback. The real Sonos helper is still required.
 
-The initial integration targets one separately named test destination. Independent rooms, synchronized acoustic output, long-duration playback and end-to-end iPhone behavior must be validated before a general rollout. This is not an AirPlay 1 service merely advertising AirPlay 2 capability bits.
+The integration supports a separately named destination per logical Sonos room;
+see [multi-room deployment](MULTIROOM.md). Single-room iPhone playback has been
+confirmed by a listener. Synchronized acoustic output and installation-wide
+audible endurance still require validation. This is not an AirPlay 1 service
+merely advertising AirPlay 2 capability bits.
+
+For a listening test and interpreting the worker's diagnostic output, see
+[TESTING.md](TESTING.md). The worker now supports `--version` without opening a
+speaker session and records source revision, mute/volume configuration and
+whole-session signal peaks, including sessions shorter than five seconds.
+
+## Getting started
+
+This is an opt-in source build for experienced operators, not a prebuilt release
+or a change to the standard installer. Start with the [Linux setup guide](SETUP.md),
+then follow [per-room deployment](MULTIROOM.md) and [listening tests](TESTING.md).
+The setup requires a dedicated physical Sonos helper and compatible build
+dependencies. Existing Sonos speakers keep their firmware; the bridge supplies
+the AirPlay 2 receivers.
 
 ## Components
 
@@ -41,7 +59,12 @@ Copy [the example](airconnect.conf.example) to a private location and replace th
 
 The frontend and worker must run on the **same host**. Device ownership also needs coordination with every other native sender. Existing leases are per host/user/temp directory: running a second bridge on another machine does not automatically share ownership with the production bridge. Co-locate services for production, or supply a separately verified ownership guard. Do not expose this internal pipe protocol over the network as a raw timestamped stream.
 
-Use one unique name, port, stable AirPlay identity and timing interface per room. Exclude the helper as a destination. The inspected NQPTP has a 16-client limit; review capacity before advertising more rooms. Do not claim synchronized multiroom playback until acoustic and drift tests pass.
+Use one unique name, port, stable AirPlay identity and timing interface per room.
+The room generator does this by Sonos UUID and excludes the dedicated helper.
+The pinned NQPTP has a 16-client limit; `expand-timing.py` provides a checked
+capacity-only change to 32 without changing the shared-memory ABI. Rebuild and
+verify the daemon before using a larger manifest. Do not claim synchronized
+multiroom playback until acoustic and drift tests pass.
 
 ## Tests and failure behavior
 
@@ -49,6 +72,8 @@ Offline tests cover deadline placement, continuous samples under small timing va
 
 ```sh
 NATIVE_TEST_DRIVER="$PWD/tests/ap2_native_driver.py" python3 tests/test_native_control.py
+python3 -m unittest discover -s tests -p 'test_ap2_diagnostics.py'
+python3 -m unittest discover -s tests -p 'test_ap2_rooms.py'
 ```
 
 On macOS, also set `NATIVE_TEST_HELPER_IP` to a local interface address for the second simulated device. This is a simulator address on the test host, not a real helper address. The harness verifies normal restoration, delayed topology, bounded failed promotion/separation and refusal of a busy helper.

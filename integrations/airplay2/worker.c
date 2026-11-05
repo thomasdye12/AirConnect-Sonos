@@ -13,12 +13,17 @@
 #include <time.h>
 #include <unistd.h>
 log_level main_loglevel=lINFO;
+#ifndef AP2_BUILD_REVISION
+#define AP2_BUILD_REVISION "unknown"
+#endif
+#define AP2_WORKER_VERSION "airconnect-ap2-worker diagnostics-v1 source=" AP2_BUILD_REVISION
 static volatile bool running=true;
 static pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 static struct ap2_timeline queue;
 static int input_error;
 static uint64_t received;
 static unsigned input_peak;
+static unsigned session_input_peak;
 static unsigned peak_s16le(const uint8_t *pcm,size_t bytes) {
     unsigned peak=0;
     for(size_t i=0;i+1<bytes;i+=2) {
@@ -61,16 +66,19 @@ static void *ingest(void *unused) {
         pthread_mutex_lock(&mutex);
         if(type==AP2_FLUSH)ap2_timeline_flush(&queue);
         else if(ap2_timeline_push(&queue,pcm,n,ap2_get64(h+16)))input_error=1;
-        else {received+=n;unsigned peak=peak_s16le(pcm,n*4);if(peak>input_peak)input_peak=peak;}
+        else {received+=n;unsigned peak=peak_s16le(pcm,n*4);if(peak>input_peak)input_peak=peak;
+            if(peak>session_input_peak)session_input_peak=peak;}
         pthread_mutex_unlock(&mutex);
         if(input_error)break;
     }
     running=false;return NULL;
 }
 int main(int argc,char **argv) {
+    if(argc==2 && !strcmp(argv[1],"--version")){puts(AP2_WORKER_VERSION);return 0;}
     if(argc!=7){fprintf(stderr,"usage: worker helper.json local_ip receiver_url uuid volume muted\n");return 2;}
     char *end;long volume=strtol(argv[5],&end,10);if(*end||volume<0||volume>100)return 2;
     long muted=strtol(argv[6],&end,10);if(*end||(muted!=0&&muted!=1))return 2;
+    fprintf(stderr,"ap2 worker start: %s volume=%ld muted=%ld\n",AP2_WORKER_VERSION,volume,muted);
     signal(SIGTERM,stop);signal(SIGINT,stop);signal(SIGPIPE,SIG_IGN);
     setvbuf(stdout,NULL,_IOLBF,0);
     if(strlen(argv[1])>=sizeof(glNativeHelperConfig))return 2;
@@ -82,7 +90,7 @@ int main(int argc,char **argv) {
     raop_pcm_output_t out=sonos_native_output(device);
     void *session=out.open(out.owner,&running);
     if(!session){char error[192];sonos_native_get_error(device,error,sizeof(error));fprintf(stderr,"ap2 worker: could not open receiver: %s\n",error);sonos_native_device_free(device);return 5;}
-    uint8_t pcm[1004]={0};uint64_t start=now_ns(),report=start;int ready=0,rc=0;unsigned output_peak=0;
+    uint8_t pcm[1004]={0};uint64_t start=now_ns(),report=start;int ready=0,rc=0;unsigned output_peak=0,session_output_peak=0;
     /* The sender's first submission establishes its clock; match its 75 ms lead. */
     ap2_timeline_init(&queue,start+75000000);
     pthread_t reader;
@@ -90,6 +98,7 @@ int main(int argc,char **argv) {
     while(running) {
         pthread_mutex_lock(&mutex);ap2_timeline_render(&queue,pcm,251);pthread_mutex_unlock(&mutex);
         unsigned peak=peak_s16le(pcm,sizeof(pcm));if(peak>output_peak)output_peak=peak;
+        if(peak>session_output_peak)session_output_peak=peak;
         if(out.write(session,pcm,sizeof(pcm))){rc=7;break;}
         if(!ready && sonos_native_session_ready(session)) {ready=1;puts("READY");}
         uint64_t now=now_ns();
@@ -106,8 +115,9 @@ int main(int argc,char **argv) {
     if(input_error)rc=9;
     if(rc){char error[192];sonos_native_get_error(device,error,sizeof(error));fprintf(stderr,"ap2 worker failed rc=%d: %s\n",rc,error);}
     out.close(session);sonos_native_device_free(device);
-    fprintf(stderr,"ap2 worker closed rc=%d received=%llu late=%llu silence=%llu realignments=%llu\n",rc,
+    fprintf(stderr,"ap2 worker closed rc=%d received=%llu late=%llu silence=%llu realignments=%llu input_peak=%u output_peak=%u\n",rc,
         (unsigned long long)received,(unsigned long long)queue.late_frames,
-        (unsigned long long)queue.silence_frames,(unsigned long long)queue.realignments);
+        (unsigned long long)queue.silence_frames,(unsigned long long)queue.realignments,
+        session_input_peak,session_output_peak);
     return rc;
 }

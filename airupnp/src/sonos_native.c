@@ -28,7 +28,7 @@ static char helper_ip[16], helper_id[32];
 #define TZ "ZoneGroupTopology"
 #define LIMIT (1024 * 1024)
 struct pair { const char *key, *value; };
-struct state { char *uri, *meta; char group[160]; int volume, mute; };
+struct state { char *uri, *meta; char group[160], bond[512], partner[32], partner_ip[16]; int volume, mute; };
 struct sonos_native_device {
     char local[16], ip[16], id[32];
     char error[192];
@@ -40,7 +40,7 @@ struct session {
     struct sonos_sender *sender;
     struct state receiver, helper;
     char settings[256];
-    int receiver_lock, helper_lock, changed, helper_released;
+    int receiver_lock, partner_lock, helper_lock, changed, helper_released;
     uint64_t pcm_frames, signal_frames;
     pthread_t control;
     pthread_mutex_t mutex;
@@ -210,7 +210,15 @@ static IXML_Document *topology(const char *ip) {
     IXML_Document *result=raw ? ixmlParseBuffer(raw) : NULL;
     free(raw); ixmlDocument_free(doc); return result;
 }
-static int standalone(IXML_Document *doc,const char *id,const char *ip,char *group) {
+static int map_has_member(const char *map,const char *id) {
+    size_t n=strlen(id);
+    for(const char *p=map;p && *p;) {
+        if(!strncmp(p,id,n) && p[n]==':')return 1;
+        p=strchr(p,';');if(p)p++;
+    }
+    return 0;
+}
+static int standalone(IXML_Document *doc,const char *id,const char *ip,char *group,char *bond) {
     if (!doc) return 0;
     int ok=0; IXML_NodeList *groups=ixmlDocument_getElementsByTagName(doc,"ZoneGroup");
     for (unsigned i=0;i<ixmlNodeList_length(groups);++i) {
@@ -218,11 +226,35 @@ static int standalone(IXML_Document *doc,const char *id,const char *ip,char *gro
         const char *coord=ixmlElement_getAttribute(g,"Coordinator");
         if (!coord || strcmp(coord,id)) continue;
         IXML_NodeList *members=ixmlElement_getElementsByTagName(g,"ZoneGroupMember");
-        if (ixmlNodeList_length(members)==1) {
-            IXML_Element *m=(IXML_Element*)ixmlNodeList_item(members,0);
+        IXML_Element *m=NULL;
+        for(unsigned j=0;j<ixmlNodeList_length(members);j++) {
+            IXML_Element *candidate=(IXML_Element*)ixmlNodeList_item(members,j);
+            const char *uid=ixmlElement_getAttribute(candidate,"UUID");
+            if(uid && !strcmp(uid,id))m=candidate;
+        }
+        if (m) {
             const char *uid=ixmlElement_getAttribute(m,"UUID"), *loc=ixmlElement_getAttribute(m,"Location");
             char prefix[64];snprintf(prefix,sizeof(prefix),"http://%s:1400/",ip);
             ok=uid && !strcmp(uid,id) && loc && !strncmp(loc,prefix,strlen(prefix));
+            const char *map=ixmlElement_getAttribute(m,"ChannelMapSet");
+            if(!map)map="";
+            if(*map) {
+                unsigned mapped=1;for(const char *p=map;*p;p++)if(*p==';')mapped++;
+                if(mapped!=2 || mapped!=ixmlNodeList_length(members) || !map_has_member(map,id))ok=0;
+            }
+            /* Stereo partners are members of one logical room, not an unrelated
+             * grouped room. Only accept invisible partners with the identical
+             * explicit bond map. Never group/ungroup or create a stereo bond. */
+            for(unsigned j=0;ok && j<ixmlNodeList_length(members);j++) {
+                IXML_Element *peer=(IXML_Element*)ixmlNodeList_item(members,j);
+                if(peer==m)continue;
+                const char *other=ixmlElement_getAttribute(peer,"UUID");
+                const char *hidden=ixmlElement_getAttribute(peer,"Invisible");
+                const char *peer_map=ixmlElement_getAttribute(peer,"ChannelMapSet");
+                ok=*map && map_has_member(map,id) && other && map_has_member(map,other) &&
+                    hidden && !strcmp(hidden,"1") && peer_map && !strcmp(map,peer_map);
+            }
+            if(ok && bond){if(strlen(map)>=512)ok=0;else strcpy(bond,map);}
             const char *gid=ixmlElement_getAttribute(g,"ID");
             if (ok && group) { if (!gid || strlen(gid)>=160) ok=0; else strcpy(group,gid); }
         }
@@ -237,7 +269,22 @@ static int snapshot(const char *ip,const char *id,struct state *s) {
     if(!ok)LOG_ERROR("native snapshot %s: transport=%s; expected STOPPED",ip,transport?transport:"unavailable");
     free(transport);
     if (!ok) return -1;
-    IXML_Document *top=topology(ip); ok=ok && standalone(top,id,ip,s->group); if(top)ixmlDocument_free(top);
+    IXML_Document *top=topology(ip); ok=ok && standalone(top,id,ip,s->group,s->bond);
+    if(ok && *s->bond) {
+        IXML_NodeList *members=ixmlDocument_getElementsByTagName(top,"ZoneGroupMember");
+        for(unsigned i=0;i<ixmlNodeList_length(members);i++) {
+            IXML_Element *member=(IXML_Element*)ixmlNodeList_item(members,i);
+            const char *uid=ixmlElement_getAttribute(member,"UUID");
+            const char *loc=ixmlElement_getAttribute(member,"Location");
+            if(uid && strcmp(uid,id) && map_has_member(s->bond,uid)) {
+                struct in_addr addr;
+                if(!identity(uid) || !loc || sscanf(loc,"http://%15[^:]:",s->partner_ip)!=1 || inet_pton(AF_INET,s->partner_ip,&addr)!=1)ok=0;
+                else strcpy(s->partner,uid);
+            }
+        }
+        ixmlNodeList_free(members);if(!*s->partner)ok=0;
+    }
+    if(top)ixmlDocument_free(top);
     if (!ok) {LOG_ERROR("native snapshot %s: standalone identity not confirmed",ip);return -1;}
     s->uri=value(ip,AV,"GetMediaInfo","CurrentURI"); s->meta=value(ip,AV,"GetMediaInfo","CurrentURIMetaData");
     char *mute=value(ip,RC,"GetMute","CurrentMute"), *vol=value(ip,RC,"GetVolume","CurrentVolume");
@@ -250,20 +297,26 @@ static int restore(const char *ip,const char *id,const struct state *s,int detac
     if(detach) rc|=basic(ip,"BecomeCoordinatorOfStandaloneGroup");
     rc|=seturi(ip,s->uri,s->meta);rc|=basic(ip,"Stop");
     rc|=render(ip,"SetVolume",s->volume);rc|=render(ip,"SetMute",s->mute);
-    struct state after={0};int verified=snapshot(ip,id,&after)==0 && !strcmp(after.uri,s->uri) && !strcmp(after.meta,s->meta) && after.volume==s->volume && after.mute==s->mute;
-    state_free(&after);
+    int verified=0;uint64_t deadline=millis()+(*s->bond?3000:0);
+    do {
+        struct state after={0};verified=snapshot(ip,id,&after)==0 && !strcmp(after.uri,s->uri) && !strcmp(after.meta,s->meta) && !strcmp(after.bond,s->bond) && after.volume==s->volume && after.mute==s->mute;
+        state_free(&after);if(verified || millis()>=deadline)break;delay_ms(150);
+    }while(1);
     LOG_INFO("native restore %s: %s",ip,!rc&&verified?"verified":"FAILED");
     return !rc&&verified ? 0 : -1;
 }
 static int separated(struct session *s, int diagnose) {
-    int ok=1;const char *ips[]={s->device->ip,helper_ip};
-    for(int i=0;i<2;++i) {
+    int ok=1;const char *ips[]={s->device->ip,helper_ip,s->receiver.partner_ip};
+    for(int i=0;i<(*s->receiver.partner_ip?3:2);++i) {
         IXML_Document *top=topology(ips[i]);
-        int receiver=standalone(top,s->device->id,s->device->ip,NULL),helper=standalone(top,helper_id,helper_ip,NULL);
+        char receiver_bond[512]={0},helper_bond[512]={0};
+        int receiver=standalone(top,s->device->id,s->device->ip,NULL,receiver_bond),helper=standalone(top,helper_id,helper_ip,NULL,helper_bond);
+        receiver=receiver && !strcmp(receiver_bond,s->receiver.bond);
+        helper=helper && !strcmp(helper_bond,s->helper.bond);
         if(diagnose)LOG_INFO("native topology from %s: receiver_standalone=%d helper_standalone=%d",ips[i],receiver,helper);
         /* Each coordinator's own membership is authoritative. Its cached view
          * of the other group may retain an orphaned pre-promotion group ID. */
-        ok=ok && (i==0 ? receiver : helper);
+        ok=ok && (i==1 ? helper : receiver);
         if(top)ixmlDocument_free(top);
     }
     return ok;
@@ -303,9 +356,16 @@ static void *control(void *arg) {
         if(!promoted && first && millis()-first>=3000) {
             char transport[256],uri[80];strcpy(transport,s->settings);char *comma=strrchr(transport,',');if(comma)comma[1]=0;
             snprintf(uri,sizeof(uri),"x-rincon-stream:RINCON_02%.10s01400:0",d->id+9);
-            const struct pair args[]={{"InstanceID","0"},{"CurrentCoordinator",helper_id},{"CurrentGroupID",s->receiver.group},{"OtherMembers",""},{"TransportSettings",transport},{"CurrentURI",uri},{"CurrentURIMetaData",""},{"SleepTimerState",""},{"AlarmState",""},{"StreamRestartState",""},{"SharedQueueTrackList",""},{"PrivateQueueTrackList",""},{"CurrentVLIState",""},{NULL,NULL}};
+            const struct pair args[]={{"InstanceID","0"},{"CurrentCoordinator",helper_id},{"CurrentGroupID",s->receiver.group},{"OtherMembers",s->receiver.partner},{"TransportSettings",transport},{"CurrentURI",uri},{"CurrentURIMetaData",""},{"SleepTimerState",""},{"AlarmState",""},{"StreamRestartState",""},{"SharedQueueTrackList",""},{"PrivateQueueTrackList",""},{"CurrentVLIState",""},{NULL,NULL}};
             stage="promoting receiver to coordinator";
             if(action(d->ip,AV,"BecomeGroupCoordinator",args))goto fail;
+            if(*s->receiver.partner) {
+                /* Promotion leaves the bonded right speaker at the old helper.
+                 * Rejoin the existing bond; do not create/remove stereo pairing. */
+                char partner_uri[80];snprintf(partner_uri,sizeof(partner_uri),"x-rincon:%s",d->id);
+                stage="returning stereo partner to its coordinator";
+                if(seturi(s->receiver.partner_ip,partner_uri,""))goto fail;
+            }
             int clean=wait_separated(s);
             if(stopped(s))return NULL;
             if(!clean) {
@@ -351,7 +411,7 @@ static void session_close(void *ctx) {
         restore(s->device->ip,s->device->id,&s->receiver,1);
         if(!s->helper_released)restore(helper_ip,helper_id,&s->helper,1);
     }
-    release(&s->helper_lock);release(&s->receiver_lock);
+    release(&s->helper_lock);release(&s->partner_lock);release(&s->receiver_lock);
     state_free(&s->receiver);state_free(&s->helper);
     pthread_mutex_lock(&s->device->mutex);s->device->active=0;pthread_mutex_unlock(&s->device->mutex);
     pthread_mutex_destroy(&s->mutex);free(s);
@@ -362,13 +422,17 @@ static void *session_open(void *owner, const volatile bool *running) {
     if(active)return NULL;
     struct session *s=calloc(1,sizeof(*s));
     if(!s){pthread_mutex_lock(&d->mutex);d->active=0;pthread_mutex_unlock(&d->mutex);return NULL;}
-    s->device=d;s->receiver_lock=s->helper_lock=-1;pthread_mutex_init(&s->mutex,NULL);
+    s->device=d;s->receiver_lock=s->partner_lock=s->helper_lock=-1;pthread_mutex_init(&s->mutex,NULL);
     const char *stage="receiver lease unavailable";
     s->receiver_lock=lease(d->id,running);if(s->receiver_lock<0)goto fail;
     stage="helper lease unavailable";
     s->helper_lock=lease(helper_id,running);if(s->helper_lock<0)goto fail;
     stage="receiver must be reachable, stopped and standalone; see bridge log";
     if(!*running || snapshot(d->ip,d->id,&s->receiver))goto fail;
+    if(*s->receiver.partner) {
+        stage="stereo partner lease unavailable";
+        s->partner_lock=lease(s->receiver.partner,running);if(s->partner_lock<0)goto fail;
+    }
     stage="helper must be reachable, stopped and standalone; see bridge log";
     if(snapshot(helper_ip,helper_id,&s->helper))goto fail;
     stage="opening UDP sender";

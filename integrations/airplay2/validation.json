@@ -1,5 +1,5 @@
 {
-  "status": "experimental; live AirPlay 2 speaker playback not yet validated",
+  "status": "experimental; user-confirmed audible single-room AirPlay 2 playback; background routing and endurance not yet validated",
   "date": "2026-10-15",
   "builds": {
     "macos_arm64": [
@@ -59,5 +59,85 @@
     "No acoustic latency, synchronized multiroom or long-term drift result",
     "Separate hosts do not share device leases without explicit coordination",
     "Native artwork and title display remain unfinished"
-  ]
+  ],
+  "follow_up_2026_11_05": {
+    "scope": "Rebuilt experimental worker with current native clock/counter fixes and diagnostics-v1; existing frontend and timing daemon retained.",
+    "offline": {
+      "macos_worker_build": "passed",
+      "timeline_asan_ubsan": "passed",
+      "backend_ipc_and_failures": "passed, 3 tests",
+      "diagnostic_reports": "passed, 7 tests",
+      "simulated_sonos_lifecycle": "passed including restoration, delayed topology, failed promotion and busy-helper refusal",
+      "native_packet_and_sender": "passed on macOS and ARMv7 bridge"
+    },
+    "live_muted": {
+      "received_frames": 882000,
+      "late_input_frames": 0,
+      "input_peak": 1199,
+      "output_peak": 1199,
+      "exit_code": 0,
+      "helper_restore": "verified",
+      "receiver_restore": "verified",
+      "audibility": "not tested; muted"
+    },
+    "deployment": {
+      "worker_build": "eda458687555-test-20261105",
+      "worker_sha256": "ddf71f482163f8b1ec294ab12137dd4ec8cffd51d434614b48427cf43a1be86e",
+      "rollback": "Previous worker saved before atomic replacement",
+      "discovery": "AirPlay 2 test destination resolved from a separate LAN host",
+      "production_receiver": "remained active; not replaced"
+    },
+    "iphone_playback": "User confirmed successful audible test room playback after setting speaker_volume=100 with iPhone software volume enabled. Source app/iOS, background routing, endurance and multiroom synchronization remain unconfirmed."
+  },
+  "multiroom_2026_11_05": {
+    "status": "18 room destinations deployed; discovery/control verified for all, audible listening confirmed only on test room",
+    "destinations": 18,
+    "reserved_helper_destinations": 1,
+    "timing_capacity": 32,
+    "worker_build": "eda458687555-multiroom-v2",
+    "worker_sha256": "ed31da6e7a1a8e82671682f140cb7838597b398fc8b2b7a7d179950567bde80a",
+    "timing_sha256": "6699d322f0ce2e26e7f6f1efb1b1a4af17851b5adcd24679cbebbb5c716a3cba",
+    "offline": [
+      "16 Python backend/diagnostic/room tests passed",
+      "Local native lifecycle simulation passed, including explicit stereo rejoin and grouped-room refusal",
+      "Native packet/sender tests passed"
+    ],
+    "discovery": "18/18 correct Bonjour names, identity matches and ports; RTSP OPTIONS returned 200 for each from separate LAN host",
+    "timing": "18 distinct version-11 shared memory interfaces allocated, exceeding old 16-client limit",
+    "stereo_pair": {
+      "room": "stereo test room",
+      "test": "20 seconds muted",
+      "received_frames": 882000,
+      "late_input_frames": 0,
+      "exit_code": 0,
+      "restoration": "receiver, original bond map and helper verified",
+      "audibility": "not tested"
+    },
+    "concurrent_native_streams": {
+      "rooms": [
+        "receiver A",
+        "receiver B"
+      ],
+      "test": "two overlapping 20-second muted streams with serialized helper startup and independent closure",
+      "received_frames_per_room": 882000,
+      "late_input_frames_per_room": 0,
+      "exit_codes": [
+        0,
+        0
+      ],
+      "restoration": "both receivers and helper verified",
+      "scope": "native output concurrency, not simultaneous decoded iPhone streams or acoustic synchronization"
+    },
+    "paired_room_investigation": "Earlier stereo tests failed before explicit partner rejoin was implemented. a second stereo room also changed to an unrelated another room group during its test; its initial standalone restoration was not verified. Later stereo test room pairing/cleanup verified with final code. a second stereo room remains subject to normal grouped-room refusal.",
+    "boot": "room systemd target enabled; no reboot test performed",
+    "limitations": [
+      "Dedicated helper remains excluded",
+      "No installation-wide audible listening/endurance result",
+      "No acoustic multiroom sync/drift measurement",
+      "Simultaneous startup limited by bounded helper serialization",
+      "Rooms must be stopped and not grouped with unrelated rooms",
+      "External controllers/automation do not honour local leases",
+      "Topology/address changes require explicit regeneration"
+    ]
+  }
 }

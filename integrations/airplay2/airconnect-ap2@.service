@@ -1,0 +1,17 @@
+[Unit]
+Description=AirConnect AirPlay 2 room %i
+After=network-online.target airconnect-ap2-timing.service avahi-daemon.service
+Requires=airconnect-ap2-timing.service avahi-daemon.service
+PartOf=airconnect-ap2-rooms.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/airconnect-airplay2
+Environment=LD_LIBRARY_PATH=/srv/airconnect-airplay2/prefix/lib
+Environment=TMPDIR=/tmp
+ExecStart=/srv/airconnect-airplay2/prefix/bin/shairport-sync -c /srv/airconnect-airplay2/rooms/%i.conf -v
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+KillMode=mixed
+UMask=0077

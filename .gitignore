@@ -144,3 +144,8 @@ __pycache__/
 
 # User-selected native helper contains private device identity
 native-helper.json
+
+# Private AirPlay 2 deployment state
+.private/
+integrations/airplay2/rooms/
+integrations/airplay2/topology.xml
